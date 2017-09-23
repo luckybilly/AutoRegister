@@ -1,0 +1,136 @@
+apply plugin: 'groovy'
+apply plugin: 'maven'
+
+apply plugin: 'com.jfrog.bintray'
+
+dependencies {
+    compile gradleApi()
+    compile localGroovy()
+}
+
+repositories {
+    mavenCentral()
+}
+dependencies {
+    compile 'com.android.tools.build:gradle:2.2.0'
+}
+
+
+//加载本地maven私服配置（在工程根目录中的local.properties文件中进行配置）
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+def artifactory_user = properties.getProperty("artifactory_user")
+def artifactory_password = properties.getProperty("artifactory_password")
+def artifactory_contextUrl = properties.getProperty("artifactory_contextUrl")
+def artifactory_snapshot_repoKey = properties.getProperty("artifactory_snapshot_repoKey")
+def artifactory_release_repoKey = properties.getProperty("artifactory_release_repoKey")
+
+def maven_type_snapshot = true
+// 项目引用的版本号，比如compile 'com.yanzhenjie:andserver:1.0.1'中的1.0.1就是这里配置的。
+def artifact_version='1.0.1'
+// 唯一包名，比如compile 'com.yanzhenjie:andserver:1.0.1'中的com.yanzhenjie就是这里配置的。
+def artifact_group = 'com.billy.android'
+def artifact_id = 'autoregister'
+group = artifact_group
+version = artifact_version
+def debug_flag = true //true: 发布到本地maven仓库， false： 发布到maven私服
+
+task sourcesJar(type: Jar) {
+    from project.file('src/main/groovy')
+    classifier = 'sources'
+}
+
+artifacts {
+    archives sourcesJar
+}
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            //deploy到maven仓库
+            if (debug_flag) {
+                repository(url: uri('../repo-local')) //deploy到本地仓库
+            } else {//deploy到maven私服中
+                def repoKey = maven_type_snapshot ? artifactory_snapshot_repoKey : artifactory_release_repoKey
+                repository(url: "${artifactory_contextUrl}/${repoKey}") {
+                    authentication(userName: artifactory_user, password: artifactory_password)
+                }
+            }
+
+            pom.groupId = artifact_group
+            pom.artifactId = artifact_id
+            pom.version = artifact_version + (maven_type_snapshot ? '-SNAPSHOT' : '')
+
+            pom.project {
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+// 定义两个链接，下面会用到。
+def siteUrl = 'https://github.com/luckybilly/AndAOP' // 项目主页。
+def gitUrl = 'git@github.com:luckybilly/AndAOP.git' // Git仓库的url。
+
+install {
+    repositories.mavenInstaller {
+        // 生成pom.xml和参数
+        pom {
+            project {
+                packaging 'jar'
+                // 项目描述，复制我的话，这里需要修改。
+                name 'AutoRegister'// 可选，项目名称。
+                description 'a gradle plugin project for android AOP.'// 可选，项目描述。
+                url siteUrl // 项目主页，这里是引用上面定义好。
+
+                // 软件开源协议，现在一般都是Apache License2.0吧，复制我的，这里不需要修改。
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                //填写开发者基本信息，复制我的，这里需要修改。
+                developers {
+                    developer {
+                        id 'billy' // 开发者的id。
+                        name 'billy' // 开发者名字。
+                        email 'okkanan@hotmail.com' // 开发者邮箱。
+                    }
+                }
+
+                // SCM，复制我的，这里不需要修改。
+                scm {
+                    connection gitUrl // Git仓库地址。
+                    developerConnection gitUrl // Git仓库地址。
+                    url siteUrl // 项目主页。
+                }
+            }
+        }
+    }
+}
+
+// 这里是读取Bintray相关的信息，我们上传项目到github上的时候会把gradle文件传上去，所以不要把帐号密码的信息直接写在这里，写在local.properties中，这里动态读取。
+//Properties properties = new Properties()
+//properties.load(project.rootProject.file('local.properties').newDataInputStream())
+bintray {
+    user = properties.getProperty("bintray.user") // Bintray的用户名。
+    key = properties.getProperty("bintray.apikey") // Bintray刚才保存的ApiKey。
+
+    configurations = ['archives']
+    pkg {
+        repo = "android"  // 上传到maven库。（这里要特别注意，如果写了maven报404错误，请在bintray创建一个仓库，这里填改成你创建的仓库的名字，如何创建请看下图。）
+        name = "AutoRegister"  // 发布到Bintray上的项目名字，这里的名字不是compile 'com.yanzhenjie:andserver:1.0.1'中的andserver。
+        userOrg = properties.getProperty("bintray.userOrg") // Bintray的用户名，2016年11月更新。
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        licenses = ["Apache-2.0"]
+        publish = true // 是否是公开项目。
+    }
+}

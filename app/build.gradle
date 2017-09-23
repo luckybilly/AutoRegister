@@ -1,0 +1,68 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.0"
+    defaultConfig {
+        applicationId "com.billy.android.autoregsiter.demo"
+        minSdkVersion 14
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:25.0.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.0.2'
+
+    compile project(':app_lib')
+}
+
+
+//auto register extension
+// 功能介绍：
+//  在编译期扫描将打到apk包中的所有类
+//  将 scanInterface的实现类 或 scanSuperClasses的子类
+//  并在 codeInsertToClassName 类的 static块 中生成如下代码：
+//  registerClassName.registerMethodName(scanInterface)
+// 要点：
+//  1. registerClassName.registerMethodName要对codeInsertToClassName可见(public)
+//  2. 若未配置registerClassName，则registerClassName = codeInsertToClassName
+//  3. abstract的基类或scanInterface的子接口需要exclude
+// 自动生成的代码示例：
+/*
+  在com.billy.app_lib_interface.CategoryManager.class文件中
+  static
+  {
+    register(new CategoryA()); //scanInterface的实现类
+    register(new CategoryB()); //scanSuperClass的子类
+  }
+ */
+apply plugin: 'auto-register'
+autoregister {
+    registerInfo = [
+        [
+            'scanInterface'             : 'com.billy.app_lib_interface.ICategory'
+            , 'scanSuperClasses'        : ['com.billy.android.autoregister.demo.BaseCategory']
+            , 'codeInsertToClassName'   : 'com.billy.app_lib_interface.CategoryManager'
+            , 'registerMethodName'      : 'register'
+            , 'exclude'                 : [//排除的类，支持正则表达式（包分隔符需要用/表示，不能用.）
+                'com.billy.android.autoregister.demo.BaseCategory'.replaceAll('\\.', '/') //排除这个基类
+            ]
+        ],
+        [
+            'scanInterface'             : 'com.billy.app_lib.IOther'
+            , 'codeInsertToClassName'   : 'com.billy.app_lib.OtherManager'
+            , 'registerClassName'       : 'com.billy.app_lib.OtherManager'
+            , 'registerMethodName'      : 'registerOther'
+        ]
+    ]
+}
