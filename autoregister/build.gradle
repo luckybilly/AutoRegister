@@ -74,8 +74,8 @@ uploadArchives {
 
 
 // 定义两个链接，下面会用到。
-def siteUrl = 'https://github.com/luckybilly/AndAOP' // 项目主页。
-def gitUrl = 'git@github.com:luckybilly/AndAOP.git' // Git仓库的url。
+def siteUrl = 'https://github.com/luckybilly/AutoRegister' // 项目主页。
+def gitUrl = 'git@github.com:luckybilly/AutoRegister.git' // Git仓库的url。
 
 install {
     repositories.mavenInstaller {
