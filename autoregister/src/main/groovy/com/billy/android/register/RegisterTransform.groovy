@@ -48,21 +48,13 @@ class RegisterTransform extends Transform {
                    , boolean isIncremental) throws IOException, TransformException, InterruptedException {
         project.logger.warn("start auto-register transform...")
         long time = System.currentTimeMillis()
-        File initClassFile = null
-        boolean jar = false
-        /**
-         * 遍历输入文件
-         */
+        // 遍历输入文件
         inputs.each { TransformInput input ->
 
-            /**
-             * 遍历jar
-             */
+            // 遍历jar
             input.jarInputs.each { JarInput jarInput ->
                 String destName = jarInput.name
-                /**
-                 * 重名名输出文件,因为可能同名,会覆盖
-                 */
+                // 重名名输出文件,因为可能同名,会覆盖
                 def hexName = DigestUtils.md5Hex(jarInput.file.absolutePath)
                 if (destName.endsWith(".jar")) {
                     destName = destName.substring(0, destName.length() - 4)
@@ -74,22 +66,15 @@ class RegisterTransform extends Transform {
 
                 //遍历jar的字节码类文件，找到需要自动注册的component
                 if (CodeScanProcessor.shouldProcessPreDexJar(src.absolutePath)) {
-                    if(CodeScanProcessor.scanJar(src, dest)) {
-                        jar = true
-                        initClassFile = dest
-                    }
+                    CodeScanProcessor.scanJar(src, dest)
                 }
                 FileUtils.copyFile(src, dest)
 
                 project.logger.info "Copying\t${src.absolutePath} \nto\t\t${dest.absolutePath}"
             }
-            /**
-             * 遍历目录
-             */
+            // 遍历目录
             input.directoryInputs.each { DirectoryInput directoryInput ->
-                /**
-                 * 获得产物的目录
-                 */
+                // 获得产物的目录
                 File dest = outputProvider.getContentLocation(directoryInput.name, directoryInput.contentTypes, directoryInput.scopes, Format.DIRECTORY)
                 String root = directoryInput.file.absolutePath
                 if (!root.endsWith(File.separator))
@@ -105,9 +90,7 @@ class RegisterTransform extends Transform {
                     }
                 }
                 project.logger.info "Copying\t${directoryInput.file.absolutePath} \nto\t\t${dest.absolutePath}"
-                /**
-                 * 处理完后拷到目标文件
-                 */
+                // 处理完后拷到目标文件
                 FileUtils.copyDirectory(directoryInput.file, dest)
             }
         }
