@@ -24,7 +24,7 @@
 ## 功能简介
 
 在apk打包过程中，对编译后的所有class（包含jar包中的class）进行扫描，将 scanInterface的实现类 或 scanSuperClasses的子类扫描出来，并在 codeInsertToClassName 类的 static块 中生成注册代码，如demo中：
-```
+```java
 public class CategoryManager {
   static
   {
@@ -44,41 +44,42 @@ public class CategoryManager {
 ## 使用方式
 
 - 在工程根目录的build.gradle中添加依赖：
-
-
-    buildscript {
-        repositories {
-            jcenter()
-        }
-        dependencies {
-            classpath 'com.android.tools.build:gradle:3.0.0-beta6'
-            classpath 'com.billy.android:autoregister:1.0.1'
-        }
+```groovy
+buildscript {
+    repositories {
+        jcenter()
     }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.0.0-beta6'
+        classpath 'com.billy.android:autoregister:1.0.1'
+    }
+}
+```
     
  - 在application的build.gradle中添加配置信息：
- 
-    
-    apply plugin: 'auto-register'
-    autoregister {
-        registerInfo = [
-            [
-                'scanInterface'             : 'com.billy.app_lib_interface.ICategory'
-                , 'scanSuperClasses'        : ['com.billy.android.autoregister.demo.BaseCategory']
-                , 'codeInsertToClassName'   : 'com.billy.app_lib_interface.CategoryManager'
-                , 'registerMethodName'      : 'register'
-                , 'exclude'                 : [//排除的类，支持正则表达式（包分隔符需要用/表示，不能用.）
-                    'com.billy.android.autoregister.demo.BaseCategory'.replaceAll('\\.', '/') //排除这个基类
-                ]
-            ],
-            [
-                'scanInterface'             : 'com.billy.app_lib.IOther'
-                , 'codeInsertToClassName'   : 'com.billy.app_lib.OtherManager'
-                , 'registerClassName'       : 'com.billy.app_lib.OtherManager' //与codeInsertToClassName是同一个类，可以省略
-                , 'registerMethodName'      : 'registerOther'
+ ```groovy
+apply plugin: 'auto-register'
+autoregister {
+    registerInfo = [
+        [
+            'scanInterface'             : 'com.billy.app_lib_interface.ICategory'
+            , 'scanSuperClasses'        : ['com.billy.android.autoregister.demo.BaseCategory']
+            , 'codeInsertToClassName'   : 'com.billy.app_lib_interface.CategoryManager'
+            , 'registerMethodName'      : 'register'
+            , 'exclude'                 : [//排除的类，支持正则表达式（包分隔符需要用/表示，不能用.）
+                'com.billy.android.autoregister.demo.BaseCategory'.replaceAll('\\.', '/') //排除这个基类
             ]
+        ],
+        [
+            'scanInterface'             : 'com.billy.app_lib.IOther'
+            , 'codeInsertToClassName'   : 'com.billy.app_lib.OtherManager'
+            , 'registerClassName'       : 'com.billy.app_lib.OtherManager' //与codeInsertToClassName是同一个类，可以省略
+            , 'registerMethodName'      : 'registerOther'
         ]
-    }
+    ]
+}
+```
+    
  
  
     
