@@ -51,7 +51,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.0-beta6'
-        classpath 'com.billy.android:autoregister:1.0.1'
+        classpath 'com.billy.android:autoregister:1.0.2'
     }
 }
 ```

@@ -27,7 +27,7 @@ def artifactory_release_repoKey = properties.getProperty("artifactory_release_re
 
 def maven_type_snapshot = true
 // 项目引用的版本号，比如compile 'com.yanzhenjie:andserver:1.0.1'中的1.0.1就是这里配置的。
-def artifact_version='1.0.1'
+def artifact_version='1.0.2'
 // 唯一包名，比如compile 'com.yanzhenjie:andserver:1.0.1'中的com.yanzhenjie就是这里配置的。
 def artifact_group = 'com.billy.android'
 def artifact_id = 'autoregister'
