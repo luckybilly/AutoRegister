@@ -98,13 +98,20 @@ class RegisterTransform extends Transform {
         project.logger.error("register scan all class cost time: " + (scanFinishTime - time) + " ms")
 
         infoList.each { ext ->
-            project.logger.error("insert register code to file:" + ext.fileContainsInitClass.absolutePath)
-            if (ext.classList.isEmpty())
-                project.logger.error('')
-            ext.classList.each {
-                project.logger.error(it)
+            if (ext.fileContainsInitClass) {
+                println("insert register code to file:" + ext.fileContainsInitClass.absolutePath)
+                if (ext.classList.isEmpty()) {
+                    project.logger.error("No class implements found for interface:" + ext.interfaceName)
+                } else {
+                    ext.classList.each {
+                        println(it)
+                    }
+                    println('')
+                    CodeInsertProcessor.insertInitCodeTo(ext)
+                }
+            } else {
+                project.logger.error("The specified register class not found:" + ext.registerClassName)
             }
-            CodeInsertProcessor.insertInitCodeTo(ext)
         }
         def finishTime = System.currentTimeMillis()
         project.logger.error("register insert code cost time: " + (finishTime - scanFinishTime) + " ms")
