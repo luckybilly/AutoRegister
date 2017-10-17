@@ -1,5 +1,7 @@
 # 自动注册插件
 
+最新版本:[![Download](https://api.bintray.com/packages/hellobilly/android/AutoRegister/images/download.svg)](https://bintray.com/hellobilly/android/AutoRegister/_latestVersion)
+
 ## 前言
 
 此插件要解决的问题是：
