@@ -29,7 +29,8 @@ class AutoRegisterConfig {
                 superClasses = superList
             }
             info.superClassNames = superClasses
-            info.initClassName = map.get('codeInsertToClassName') //代码注入的类（在此类的static块中插入注册代码）
+            info.initClassName = map.get('codeInsertToClassName') //代码注入的类
+            info.initMethodName = map.get('codeInsertToMethodName') //代码注入的方法（默认为static块）
             info.registerMethodName = map.get('registerMethodName') //生成的代码所调用的方法
             info.registerClassName = map.get('registerClassName') //注册方法所在的类
             info.include = map.get('include')

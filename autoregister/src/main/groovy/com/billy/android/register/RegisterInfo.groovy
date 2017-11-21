@@ -15,6 +15,7 @@ class RegisterInfo {
     String interfaceName = ''
     ArrayList<String> superClassNames = []
     String initClassName = ''
+    String initMethodName = ''
     String registerClassName = ''
     String registerMethodName = ''
     ArrayList<String> include = []
@@ -44,6 +45,7 @@ class RegisterInfo {
         }
         sb.append(' ]')
         sb.append('\n\t').append('codeInsertToClassName').append('\t=\t').append(initClassName)
+        sb.append('\n\t').append('codeInsertToMethodName').append('\t=\t').append(initMethodName)
         sb.append('\n\t').append('registerMethodName').append('\t\t=\tpublic static void ')
                 .append(registerClassName).append('.').append(registerMethodName)
         sb.append('\n\t').append('include').append(' = [')
@@ -82,6 +84,9 @@ class RegisterInfo {
             exclude.add(interfaceName)
         //注册和初始化的方法所在的类默认为同一个类
         initClassName = convertDotToSlash(initClassName)
+        //默认插入到static块中
+        if (!initMethodName)
+            initMethodName = "<clinit>"
         registerClassName = convertDotToSlash(registerClassName)
         //添加默认的排除项
         DEFAULT_EXCLUDE.each { e ->

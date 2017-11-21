@@ -9,15 +9,23 @@ import java.util.List;
  */
 public class OtherManager {
 
-    static final List<IOther> LIST = new ArrayList<>();
+    private final List<IOther> LIST = new ArrayList<>();
 
-    private static void registerOther(IOther other) {
+    public OtherManager() {
+        init();
+    }
+
+    private void init () {
+
+    }
+
+    private void registerOther(IOther other) {
         if (other != null) {
             LIST.add(other);
         }
     }
 
-    public static List<IOther> getAll() {
+    public List<IOther> getAll() {
         return LIST;
     }
 }

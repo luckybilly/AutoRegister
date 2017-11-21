@@ -52,8 +52,8 @@ buildscript {
         jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.0.0-beta6'
-        classpath 'com.billy.android:autoregister:1.0.3'
+        classpath 'com.android.tools.build:gradle:3.0.0'
+        classpath 'com.billy.android:autoregister:1.0.4'
     }
 }
 ```
@@ -65,23 +65,30 @@ autoregister {
     registerInfo = [
         [
             'scanInterface'             : 'com.billy.app_lib_interface.ICategory'
+            // scanSuperClasses 会自动被加入到exclude中，下面的exclude只作为演示，其实可以不用手动添加
             , 'scanSuperClasses'        : ['com.billy.android.autoregister.demo.BaseCategory']
             , 'codeInsertToClassName'   : 'com.billy.app_lib_interface.CategoryManager'
-            , 'registerMethodName'      : 'register'
-            , 'exclude'                 : [//排除的类，支持正则表达式（包分隔符需要用/表示，不能用.）
+            //未指定codeInsertToMethodName，默认插入到static块中，故此处register必须为static方法
+            , 'registerMethodName'      : 'register' //
+            , 'exclude'                 : [
+                //排除的类，支持正则表达式（包分隔符需要用/表示，不能用.）
                 'com.billy.android.autoregister.demo.BaseCategory'.replaceAll('\\.', '/') //排除这个基类
             ]
         ],
         [
             'scanInterface'             : 'com.billy.app_lib.IOther'
             , 'codeInsertToClassName'   : 'com.billy.app_lib.OtherManager'
-            , 'registerClassName'       : 'com.billy.app_lib.OtherManager' //与codeInsertToClassName是同一个类，可以省略
-            , 'registerMethodName'      : 'registerOther'
+            , 'codeInsertToMethodName'  : 'init' //非static方法
+            , 'registerMethodName'      : 'registerOther' //非static方法
         ]
     ]
 }
 ```
-    
+更新日志：
+
+### 2017-11-21 V1.0.4
+    生成的注册代码不再局限于static块中，可以在任意方法(codeInsertToMethodName)中
+    需要注意： codeInsertToMethodName 与 registerMethodName 必须同时为static或非static
  
  
     

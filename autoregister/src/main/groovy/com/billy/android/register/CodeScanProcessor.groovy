@@ -87,8 +87,7 @@ class CodeScanProcessor {
      * @param entryName
      * @return
      */
-    private
-    static boolean shouldProcessThisClassForRegister(RegisterInfo info, String entryName) {
+    private static boolean shouldProcessThisClassForRegister(RegisterInfo info, String entryName) {
         if (info != null) {
             def list = info.includePatterns
             if (list) {
@@ -135,10 +134,20 @@ class CodeScanProcessor {
         ScanClassVisitor(int api, ClassVisitor cv) {
             super(api, cv)
         }
+        boolean is(int access, int flag) {
+            return (access & flag) == flag
+        }
 
         void visit(int version, int access, String name, String signature,
                    String superName, String[] interfaces) {
             super.visit(version, access, name, signature, superName, interfaces)
+            //抽象类、接口、非public等类无法调用其无参构造方法
+            if (is(access, Opcodes.ACC_ABSTRACT)
+                || is(access, Opcodes.ACC_INTERFACE)
+                || !is(access, Opcodes.ACC_PUBLIC)
+                ) {
+                return
+            }
             RegisterTransform.infoList.each { ext ->
                 if (shouldProcessThisClassForRegister(ext, name)) {
                     if (superName != 'java/lang/Object' && !ext.superClassNames.isEmpty()) {

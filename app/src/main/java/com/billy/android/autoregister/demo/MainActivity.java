@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
             sb.append("\n");
         }
         sb.append("---------------------\n");
-        for (IOther s : OtherManager.getAll()) {
+        for (IOther s : new OtherManager().getAll()) {
             sb.append(s.getOtherName());
             sb.append("\n");
         }
