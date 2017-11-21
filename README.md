@@ -2,6 +2,8 @@
 
 最新版本:[![Download](https://api.bintray.com/packages/hellobilly/android/AutoRegister/images/download.svg)](https://bintray.com/hellobilly/android/AutoRegister/_latestVersion)
 
+[原理说明](http://blog.csdn.net/cdecde111/article/details/78074692)
+
 ## 前言
 
 此插件要解决的问题是：
@@ -16,10 +18,10 @@
 ## 名词解释
 
 - scanInterface         : (必须)字符串，接口名（完整类名），所有直接实现此接口的类将会被收集
-- codeInsertToClassName : (必须)字符串，类名（完整类名），通过编译时生成代码的方式将收集到的类注册到此类的static块中
+- codeInsertToClassName : (必须)字符串，类名（完整类名），通过编译时生成代码的方式将收集到的类注册到此类的codeInsertToMethodName方法中
+- codeInsertToMethodName: 字符串，方法名，注册代码将插入到此方法中。若未指定，则默认为static块,(方法名为：<clinit>)
 - registerMethodName    : (必须)字符串，方法名，静态方法，方法的参数为 scanInterface
 - scanSuperClasses      : 字符串或字符串数组，类名（完整类名），所有直接继承此类的子类将会被收集
-- registerClassName     : 字符串，类名（完整类名），生成的注册代码将是调用 registerClassName.registerMethodName(scanInterface)
 - include               : 数组，需要扫描的类(正则表达式，包分隔符用/代替，如： com/billy/android/.*)，默认为所有的类
 - exclude               : 数组，不需要扫描的类(正则表达式，包分隔符用/代替，如： com/billy/android/.*)，
 
