@@ -88,6 +88,13 @@ autoregister {
 ```
 更新日志：
 
+### 2017-12-06 
+
+新增[ARouter](https://github.com/alibaba/ARouter)定制的路由自动注册插件:auto-register-for-arouter
+
+        classpath 'com.billy.android:auto-register-for-arouter:1.0.0'
+        apply plugin: 'auto-register-for-arouter'
+
 ### 2017-11-21 V1.0.4
     生成的注册代码不再局限于static块中，可以在任意方法(codeInsertToMethodName)中
     需要注意： codeInsertToMethodName 与 registerMethodName 必须同时为static或非static

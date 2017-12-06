@@ -1,1 +1,1 @@
-include ':app', ':autoregister', ':app_lib', ':app_lib_interface'
+include ':app', ':autoregister', ':app_lib', ':app_lib_interface', ':auto-register-for-arouter'
