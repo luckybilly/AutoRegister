@@ -55,7 +55,7 @@ buildscript {
     }
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.0'
-        classpath 'com.billy.android:autoregister:1.0.4'
+        classpath 'com.billy.android:autoregister:x.x.x'
     }
 }
 ```
@@ -67,7 +67,6 @@ autoregister {
     registerInfo = [
         [
             'scanInterface'             : 'com.billy.app_lib_interface.ICategory'
-            // scanSuperClasses 会自动被加入到exclude中，下面的exclude只作为演示，其实可以不用手动添加
             , 'scanSuperClasses'        : ['com.billy.android.autoregister.demo.BaseCategory']
             , 'codeInsertToClassName'   : 'com.billy.app_lib_interface.CategoryManager'
             //未指定codeInsertToMethodName，默认插入到static块中，故此处register必须为static方法
@@ -87,6 +86,14 @@ autoregister {
 }
 ```
 更新日志：
+
+### 2017-12-17 V1.0.5
+1. 从本仓库中删除为[ARouter](https://github.com/alibaba/ARouter)定制的路由自动注册插件，已提供ARouter专用精简版路由自动注册插件并提交PR到ARouter仓库
+2. 解决使用继承后，scanSuperClasses指定的类本身不会被自动注册的bug，并升级为V1.0.5
+        
+        
+        scanSuperClasses 参数指定的父类不需要自动添加到exclude中
+        抽象类不会被添加到自动注册列表。
 
 ### 2017-12-06 
 

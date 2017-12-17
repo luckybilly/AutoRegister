@@ -76,12 +76,7 @@ class RegisterInfo {
         for (int i = 0; i < superClassNames.size(); i++) {
             def superClass = convertDotToSlash(superClassNames.get(i))
             superClassNames.set(i, superClass)
-            if (!exclude.contains(superClass))
-                exclude.add(superClass)
         }
-        //interfaceName添加到排除项
-        if (!exclude.contains(interfaceName))
-            exclude.add(interfaceName)
         //注册和初始化的方法所在的类默认为同一个类
         initClassName = convertDotToSlash(initClassName)
         //默认插入到static块中
