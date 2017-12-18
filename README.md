@@ -2,7 +2,7 @@
 
 最新版本:[![Download](https://api.bintray.com/packages/hellobilly/android/AutoRegister/images/download.svg)](https://bintray.com/hellobilly/android/AutoRegister/_latestVersion)
 
-[原理说明](http://blog.csdn.net/cdecde111/article/details/78074692)
+[原理说明](https://juejin.im/post/5a2b95b96fb9a045284669a9)
 
 ## 前言
 
@@ -88,7 +88,7 @@ autoregister {
 更新日志：
 
 ### 2017-12-17 V1.0.5
-1. 从本仓库中删除为[ARouter](https://github.com/alibaba/ARouter)定制的路由自动注册插件，已提供ARouter专用精简版路由自动注册插件并提交PR到ARouter仓库
+1. 从本仓库中删除为[ARouter](https://github.com/alibaba/ARouter)定制的路由自动注册插件，已提供ARouter专用精简版路由自动注册插件并提交[PR](https://github.com/alibaba/ARouter/pull/254)到ARouter仓库
 2. 解决使用继承后，scanSuperClasses指定的类本身不会被自动注册的bug，并升级为V1.0.5
         
         
