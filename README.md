@@ -87,6 +87,10 @@ autoregister {
 ```
 更新日志：
 
+### 2018-01-09 V1.1.0
+
+兼容java8
+
 ### 2017-12-17 V1.0.5
 1. 从本仓库中删除为[ARouter](https://github.com/alibaba/ARouter)定制的路由自动注册插件，已提供ARouter专用精简版路由自动注册插件并提交[PR](https://github.com/alibaba/ARouter/pull/254)到ARouter仓库
 2. 解决使用继承后，scanSuperClasses指定的类本身不会被自动注册的bug，并升级为V1.0.5

@@ -57,7 +57,7 @@ class CodeScanProcessor {
     }
 
     static boolean shouldProcessPreDexJar(String path) {
-        return path.endsWith("classes.jar") && !path.contains("com.android.support") && !path.contains("/android/m2repository")
+        return !path.contains("com.android.support") && !path.contains("/android/m2repository")
     }
 
     // file in folder like these
