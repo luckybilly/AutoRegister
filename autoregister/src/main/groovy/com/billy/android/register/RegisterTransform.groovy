@@ -48,6 +48,7 @@ class RegisterTransform extends Transform {
                    , boolean isIncremental) throws IOException, TransformException, InterruptedException {
         project.logger.warn("start auto-register transform...")
         long time = System.currentTimeMillis()
+        boolean leftSlash = File.separator == '/'
         // 遍历输入文件
         inputs.each { TransformInput input ->
 
@@ -83,8 +84,12 @@ class RegisterTransform extends Transform {
                 directoryInput.file.eachFileRecurse { File file ->
                     def path = file.absolutePath.replace(root, '')
                     if(file.isFile()){
-                        CodeScanProcessor.checkInitClass(path, new File(dest.absolutePath + File.separator + path))
-                        if (CodeScanProcessor.shouldProcessClass(path)) {
+                        def entryName = path
+                        if (!leftSlash) {
+                            entryName = entryName.replaceAll("\\\\", "/")
+                        }
+                        CodeScanProcessor.checkInitClass(entryName, new File(dest.absolutePath + File.separator + path))
+                        if (CodeScanProcessor.shouldProcessClass(entryName)) {
                             CodeScanProcessor.scanClass(file)
                         }
                     }
