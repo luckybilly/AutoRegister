@@ -87,6 +87,10 @@ autoregister {
 ```
 更新日志：
 
+### 2018-03-12 V1.2.0
+
+解决同时编译多个application module(点击Build -> Rebuild/Build APKs)时出现错误注册的问题
+
 ### 2018-01-15 V1.1.3
 
 解决windows的兼容性问题
