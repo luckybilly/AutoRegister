@@ -25,17 +25,16 @@ public class RegisterPlugin implements Plugin<Project> {
             def transformImpl = new RegisterTransform(project)
             android.registerTransform(transformImpl)
             project.afterEvaluate {
-                init(project)//此处要先于transformImpl.transform方法执行
+                init(project, transformImpl)//此处要先于transformImpl.transform方法执行
             }
         }
     }
 
-    static void init(Project project) {
+    static void init(Project project, RegisterTransform transformImpl) {
         AutoRegisterConfig config = project.extensions.findByName(EXT_NAME) as AutoRegisterConfig
         config.project = project
         config.convertConfig()
-        project.logger.warn(config.toString())
-        RegisterTransform.infoList = config.list
+        transformImpl.config = config
     }
 
 }

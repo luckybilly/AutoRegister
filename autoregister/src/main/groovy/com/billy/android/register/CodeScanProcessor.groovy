@@ -15,12 +15,18 @@ import java.util.regex.Pattern
  */
 class CodeScanProcessor {
 
+    ArrayList<RegisterInfo> infoList
+
+    CodeScanProcessor(ArrayList<RegisterInfo> infoList) {
+        this.infoList = infoList
+    }
+
     /**
      * 扫描jar包
      * @param jarFile 来源jar包文件
      * @param destFile transform后的目标jar包文件
      */
-    static void scanJar(File jarFile, File destFile) {
+    void scanJar(File jarFile, File destFile) {
         if (jarFile) {
             def file = new JarFile(jarFile)
             Enumeration enumeration = file.entries()
@@ -46,11 +52,11 @@ class CodeScanProcessor {
      * @param entryName
      * @param file
      */
-    static void checkInitClass(String entryName, File file) {
+    void checkInitClass(String entryName, File file) {
         if (entryName == null || !entryName.endsWith(".class"))
             return
         entryName = entryName.substring(0, entryName.lastIndexOf('.'))
-        RegisterTransform.infoList.each { ext ->
+        infoList.each { ext ->
             if (ext.initClassName == entryName)
                 ext.fileContainsInitClass = file
         }
@@ -68,14 +74,14 @@ class CodeScanProcessor {
     // entry in jar like these
     //android/support/v4/BuildConfig.class
     //com/lib/xiwei/common/util/UiTools.class
-    static boolean shouldProcessClass(String entryName) {
+    boolean shouldProcessClass(String entryName) {
 //        println('classes:' + entryName)
         if (entryName == null || !entryName.endsWith(".class"))
             return false
         entryName = entryName.substring(0, entryName.lastIndexOf('.'))
-        def length = RegisterTransform.infoList.size()
+        def length = infoList.size()
         for (int i = 0; i < length; i++) {
-            if (shouldProcessThisClassForRegister(RegisterTransform.infoList.get(i), entryName))
+            if (shouldProcessThisClassForRegister(infoList.get(i), entryName))
                 return true
         }
         return false
@@ -116,12 +122,12 @@ class CodeScanProcessor {
      * @param file class文件
      * @return 修改后的字节码文件内容
      */
-    static void scanClass(File file) {
+    void scanClass(File file) {
         scanClass(new FileInputStream(file))
     }
 
     //refer hack class when object init
-    static void scanClass(InputStream inputStream) {
+    void scanClass(InputStream inputStream) {
         ClassReader cr = new ClassReader(inputStream)
         ClassWriter cw = new ClassWriter(cr, 0)
         ScanClassVisitor cv = new ScanClassVisitor(Opcodes.ASM5, cw)
@@ -129,7 +135,7 @@ class CodeScanProcessor {
         inputStream.close()
     }
 
-    static class ScanClassVisitor extends ClassVisitor {
+    class ScanClassVisitor extends ClassVisitor {
 
         ScanClassVisitor(int api, ClassVisitor cv) {
             super(api, cv)
@@ -148,7 +154,7 @@ class CodeScanProcessor {
                 ) {
                 return
             }
-            RegisterTransform.infoList.each { ext ->
+            infoList.each { ext ->
                 if (shouldProcessThisClassForRegister(ext, name)) {
                     if (superName != 'java/lang/Object' && !ext.superClassNames.isEmpty()) {
                         for (int i = 0; i < ext.superClassNames.size(); i++) {

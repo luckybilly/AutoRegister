@@ -14,7 +14,7 @@ import org.gradle.api.Project
 class RegisterTransform extends Transform {
 
     Project project
-    static ArrayList<RegisterInfo> infoList
+    AutoRegisterConfig config;
 
     RegisterTransform(Project project) {
         this.project = project
@@ -47,6 +47,8 @@ class RegisterTransform extends Transform {
                    , TransformOutputProvider outputProvider
                    , boolean isIncremental) throws IOException, TransformException, InterruptedException {
         project.logger.warn("start auto-register transform...")
+        project.logger.warn(config.toString())
+        CodeScanProcessor scanProcessor = new CodeScanProcessor(config.list)
         long time = System.currentTimeMillis()
         boolean leftSlash = File.separator == '/'
         // 遍历输入文件
@@ -66,8 +68,8 @@ class RegisterTransform extends Transform {
                 File dest = outputProvider.getContentLocation(destName + "_" + hexName, jarInput.contentTypes, jarInput.scopes, Format.JAR)
 
                 //遍历jar的字节码类文件，找到需要自动注册的component
-                if (CodeScanProcessor.shouldProcessPreDexJar(src.absolutePath)) {
-                    CodeScanProcessor.scanJar(src, dest)
+                if (scanProcessor.shouldProcessPreDexJar(src.absolutePath)) {
+                    scanProcessor.scanJar(src, dest)
                 }
                 FileUtils.copyFile(src, dest)
 
@@ -88,9 +90,9 @@ class RegisterTransform extends Transform {
                         if (!leftSlash) {
                             entryName = entryName.replaceAll("\\\\", "/")
                         }
-                        CodeScanProcessor.checkInitClass(entryName, new File(dest.absolutePath + File.separator + path))
-                        if (CodeScanProcessor.shouldProcessClass(entryName)) {
-                            CodeScanProcessor.scanClass(file)
+                        scanProcessor.checkInitClass(entryName, new File(dest.absolutePath + File.separator + path))
+                        if (scanProcessor.shouldProcessClass(entryName)) {
+                            scanProcessor.scanClass(file)
                         }
                     }
                 }
@@ -102,7 +104,7 @@ class RegisterTransform extends Transform {
         def scanFinishTime = System.currentTimeMillis()
         project.logger.error("register scan all class cost time: " + (scanFinishTime - time) + " ms")
 
-        infoList.each { ext ->
+        config.list.each { ext ->
             if (ext.fileContainsInitClass) {
                 println("insert register code to file:" + ext.fileContainsInitClass.absolutePath)
                 if (ext.classList.isEmpty()) {
