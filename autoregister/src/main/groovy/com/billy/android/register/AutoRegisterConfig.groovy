@@ -12,6 +12,8 @@ class AutoRegisterConfig {
 
     ArrayList<RegisterInfo> list = new ArrayList<>()
 
+    def closeJarCache=false
+    
     Project project
 
     AutoRegisterConfig(){}

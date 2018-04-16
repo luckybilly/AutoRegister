@@ -1,5 +1,6 @@
 package com.billy.android.register
 
+
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.ClassWriter
@@ -8,6 +9,8 @@ import org.objectweb.asm.Opcodes
 import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.regex.Pattern
+
+
 /**
  *
  * @author billy.qi
@@ -17,8 +20,12 @@ class CodeScanProcessor {
 
     ArrayList<RegisterInfo> infoList
 
-    CodeScanProcessor(ArrayList<RegisterInfo> infoList) {
+    HashMap<String, String> jarMap
+
+    CodeScanProcessor(ArrayList<RegisterInfo> infoList, HashMap<String, String> jarMap) {
         this.infoList = infoList
+        this.jarMap = jarMap
+
     }
 
     /**
@@ -26,25 +33,40 @@ class CodeScanProcessor {
      * @param jarFile 来源jar包文件
      * @param destFile transform后的目标jar包文件
      */
-    void scanJar(File jarFile, File destFile) {
+    void scanJar(File jarFile, File destFile,String fileMd5) {
         if (jarFile) {
             def file = new JarFile(jarFile)
             Enumeration enumeration = file.entries()
+
+            boolean isFind = false
             while (enumeration.hasMoreElements()) {
                 JarEntry jarEntry = (JarEntry) enumeration.nextElement()
                 String entryName = jarEntry.getName()
                 //support包不扫描
                 if (entryName.startsWith("android/support"))
                     break
-//                println('entryName:' + entryName)
-                checkInitClass(entryName, destFile)
-                InputStream inputStream = file.getInputStream(jarEntry)
-                if (shouldProcessClass(entryName)) {
-                    scanClass(inputStream)
+                //   println('----------entryName:' + entryName)
+
+                if (checkInitClass(entryName, destFile)) {
+                    isFind = true
                 }
-                inputStream.close()
+
+                //是否要过滤这个类，这个可配置
+                if (shouldProcessClass(entryName)) {
+                    InputStream inputStream = file.getInputStream(jarEntry)
+
+                    scanClass(inputStream, jarFile.absolutePath,fileMd5)
+
+                    inputStream.close()
+                }
+
             }
             file.close()
+
+            if (!isFind || jarMap == null||jarMap.size() < 0) return
+
+           // String md5 = DigestUtils.md5Hex(jarFile.newInputStream())
+            jarMap.remove(fileMd5)
         }
     }
     /**
@@ -52,14 +74,35 @@ class CodeScanProcessor {
      * @param entryName
      * @param file
      */
-    void checkInitClass(String entryName, File file) {
+    boolean checkInitClass(String entryName, File file) {
         if (entryName == null || !entryName.endsWith(".class"))
             return
+
+
         entryName = entryName.substring(0, entryName.lastIndexOf('.'))
+
+        def isFind = false
+
         infoList.each { ext ->
-            if (ext.initClassName == entryName)
-                ext.fileContainsInitClass = file
+            // println("file name----"+file.name+"----entryName----"+entryName+"----ext.initClassName---"+ext.initClassName)
+            if (ext.initClassName == entryName) { //（检查是不是codeInsertToClassName 配置 要插入class文件或jar文件）
+                ext.fileContainsInitClass = file//用于后面注入用   这里也应该记录一下。
+
+                if (file.name.endsWith(".jar")) {
+                    isFind = true
+                }
+
+            }
         }
+
+        if (!isFind && file.name.endsWith(".jar")) {
+
+            //jarMap.put()
+            //     println("不codeInsertToClassName---" + file.absolutePath + "--entryName--" + entryName)
+        }
+
+        return isFind
+
     }
 
     static boolean shouldProcessPreDexJar(String path) {
@@ -122,24 +165,40 @@ class CodeScanProcessor {
      * @param file class文件
      * @return 修改后的字节码文件内容
      */
+
     void scanClass(File file) {
-        scanClass(new FileInputStream(file))
+        scanClass(file,"")
+    }
+    void scanClass(File file,String fileMd5) {
+        scanClass(new FileInputStream(file), file.absolutePath,fileMd5)
     }
 
     //refer hack class when object init
-    void scanClass(InputStream inputStream) {
+    void scanClass(InputStream inputStream, def filePath, String fileMd5) {
+
+       // println("-------------------scanClass------------------------")
         ClassReader cr = new ClassReader(inputStream)
         ClassWriter cw = new ClassWriter(cr, 0)
-        ScanClassVisitor cv = new ScanClassVisitor(Opcodes.ASM5, cw)
+
+        ScanClassVisitor cv = new ScanClassVisitor(Opcodes.ASM5, cw, inputStream, filePath,fileMd5)
         cr.accept(cv, ClassReader.EXPAND_FRAMES)
         inputStream.close()
+
+
     }
 
     class ScanClassVisitor extends ClassVisitor {
 
-        ScanClassVisitor(int api, ClassVisitor cv) {
+        InputStream inputStream
+        String filePath
+        String fileMd5
+        ScanClassVisitor(int api, ClassVisitor cv, InputStream inputStream, String filePath, String fileMd5) {
             super(api, cv)
+            this.inputStream = inputStream
+            this.filePath = filePath
+            this.fileMd5 = fileMd5
         }
+
         boolean is(int access, int flag) {
             return (access & flag) == flag
         }
@@ -149,17 +208,22 @@ class CodeScanProcessor {
             super.visit(version, access, name, signature, superName, interfaces)
             //抽象类、接口、非public等类无法调用其无参构造方法
             if (is(access, Opcodes.ACC_ABSTRACT)
-                || is(access, Opcodes.ACC_INTERFACE)
-                || !is(access, Opcodes.ACC_PUBLIC)
-                ) {
+                    || is(access, Opcodes.ACC_INTERFACE)
+                    || !is(access, Opcodes.ACC_PUBLIC)
+            ) {
                 return
             }
+           // println("-------------------visit------------------------")
+            boolean isFind = false
             infoList.each { ext ->
                 if (shouldProcessThisClassForRegister(ext, name)) {
+                    //判断没有父类的
                     if (superName != 'java/lang/Object' && !ext.superClassNames.isEmpty()) {
                         for (int i = 0; i < ext.superClassNames.size(); i++) {
                             if (ext.superClassNames.get(i) == superName) {
-                                ext.classList.add(name)
+                                //       println("superClassNames--------"+name)
+                                ext.classList.add(name) //需要把对象注入到管理类 就是fileContainsInitClass
+                                isFind = true
                                 return
                             }
                         }
@@ -167,12 +231,32 @@ class CodeScanProcessor {
                     if (ext.interfaceName && interfaces != null) {
                         interfaces.each { itName ->
                             if (itName == ext.interfaceName) {
-                                ext.classList.add(name)
+                                //      println("interfaceName--------"+name)
+                                ext.classList.add(name)//需要把对象注入到管理类  就是fileContainsInitClass
+                                isFind = true
                             }
                         }
                     }
                 }
             }
+
+         //   println("jar map != null--"+(jarMap != null)+"--"+"!isFind--"+(!isFind)+"---"+(filePath.endsWith(".jar")))
+
+            if (!isFind && filePath.endsWith(".jar") && jarMap != null) {
+                def md5 = fileMd5
+             //   def md5= AutoRegisterHelper.getFileKey(filePath)
+              //  println("jar map size--" + jarMap.size())
+                if(!jarMap.containsKey(md5)){
+                    jarMap.put(md5, filePath)
+                 //   println("没有找到需要把对象注入到管理的类， path--" + filePath + "___" + jarMap.size())
+                }
+
+
+
+            } /*else if (filePath.endsWith(".jar")) {
+
+                println("注入到管理的类， path--" + filePath)
+            }*/
 
         }
     }
