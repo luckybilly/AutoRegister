@@ -12,11 +12,11 @@ class AutoRegisterConfig {
 
     ArrayList<RegisterInfo> list = new ArrayList<>()
 
-    def closeJarCache=false
-    
+    def closeJarCache = false
+
     Project project
 
-    AutoRegisterConfig(){}
+    AutoRegisterConfig() {}
 
     void convertConfig() {
         registerInfo.each { map ->
@@ -45,8 +45,46 @@ class AutoRegisterConfig {
             }
 
         }
+
+        checkRegisterInfo()
+
     }
 
+    private void checkRegisterInfo(){
+
+         def registerInfo = AutoRegisterHelper.getRegisterInfoFile(project)
+
+         def listInfo=list.toString()
+
+         if (!registerInfo.exists()) {
+             registerInfo.createNewFile()
+             if(registerInfo.canRead()&&registerInfo.canWrite()){
+                 registerInfo.write(listInfo)
+             }else {
+                 project.logger.error('------wirte registerInfo error--------' )
+             }
+
+         } else {
+             def info = registerInfo.text
+             if (info != listInfo) {
+
+                 def jarInterfaceConfigFile = AutoRegisterHelper.getJarInterfaceConfigFile(project)
+                 def saveInterfaceConfigFile = AutoRegisterHelper.getsaveInterfaceConfigFile(project)
+                 if (jarInterfaceConfigFile.exists()) {
+                     //registerInfo 配置有改动就删除  jarInterfaceConfig.json
+                     jarInterfaceConfigFile.delete()
+                 }
+
+                 if (saveInterfaceConfigFile.exists()) {
+                     //registerInfo 配置有改动就删除  saveInterfaceConfigFile.json
+                     saveInterfaceConfigFile.delete()
+                 }
+                 registerInfo.write(listInfo)
+
+
+             }
+         }
+    }
     @Override
     String toString() {
         StringBuilder sb = new StringBuilder(RegisterPlugin.EXT_NAME).append(' [\n')

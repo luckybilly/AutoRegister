@@ -1,23 +1,66 @@
 package com.billy.android.register
 class JarConfigInfo {
-    String tag
-    String path
 
-    String getPath() {
-        return path
+
+    List<ClassList> getClassLists() {
+        return classLists
     }
 
-    void setPath(String path) {
-        this.path = path
+    void setClassLists(List<ClassList> classLists) {
+        this.classLists = classLists
     }
+    List<ClassList> classLists;
+
+    class ClassList{
+
+        String getJarMd5() {
+            return jarMd5
+        }
+
+        void setJarMd5(String jarMd5) {
+            this.jarMd5 = jarMd5
+        }
+
+        String getJarFilePath() {
+            return jarFilePath
+        }
+
+        void setJarFilePath(String jarFilePath) {
+            this.jarFilePath = jarFilePath
+        }
+
+        String getInterfaceName() {
+            return interfaceName
+        }
+
+        void setInterfaceName(String interfaceName) {
+            this.interfaceName = interfaceName
+        }
+
+        boolean getIsManagerClass() {
+            return isManagerClass
+        }
+
+        void setIsManagerClass(boolean isManagerClass) {
+            this.isManagerClass = isManagerClass
+        }
+
+        String getClassName() {
+            return className
+        }
+
+        void setClassName(String className) {
+            this.className = className
+        }
+        String className
+        String jarMd5
+        String jarFilePath
+        String interfaceName
+        boolean  isManagerClass
 
 
-    String getTag() {
-        return tag
+
     }
 
-    void setTag(String tag) {
-        this.tag = tag
-    }
 
 }

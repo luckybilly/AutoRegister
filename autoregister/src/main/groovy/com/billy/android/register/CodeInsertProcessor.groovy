@@ -26,7 +26,7 @@ class CodeInsertProcessor {
             if (file.getName().endsWith('.jar'))
                 processor.insertInitCodeIntoJarFile(file)
             else
-                processor.insertInitCodeIntoClassFile(file)
+                processor.insertInitCodeIntoClassFile(file)//class file
         }
     }
 
@@ -40,6 +40,7 @@ class CodeInsertProcessor {
             Enumeration enumeration = file.entries()
             JarOutputStream jarOutputStream = new JarOutputStream(new FileOutputStream(optJar))
 
+            //为什么选择二次查找？不直接得到类？
             while (enumeration.hasMoreElements()) {
                 JarEntry jarEntry = (JarEntry) enumeration.nextElement()
                 String entryName = jarEntry.getName()
@@ -47,7 +48,7 @@ class CodeInsertProcessor {
                 InputStream inputStream = file.getInputStream(jarEntry)
                 jarOutputStream.putNextEntry(zipEntry)
                 if (isInitClass(entryName)) {
-                    println('codeInsertToClassName:' + entryName)
+               //     println('codeInsertToClassName:' + entryName)
                     def bytes = referHackWhenInit(inputStream)
                     jarOutputStream.write(bytes)
                 } else {
@@ -131,7 +132,7 @@ class CodeInsertProcessor {
     }
 
     class MyMethodVisitor extends MethodVisitor {
-        boolean _static;
+        boolean _static
 
         MyMethodVisitor(int api, MethodVisitor mv, boolean _static) {
             super(api, mv)

@@ -21,10 +21,13 @@ class CodeScanProcessor {
     ArrayList<RegisterInfo> infoList
 
     HashMap<String, String> jarMap
+    Map<String, JarConfigInfo> interfaceMap
 
-    CodeScanProcessor(ArrayList<RegisterInfo> infoList, HashMap<String, String> jarMap) {
+    CodeScanProcessor(ArrayList<RegisterInfo> infoList, HashMap<String, String> jarMap,
+                      Map<String, JarConfigInfo> interfaceMap) {
         this.infoList = infoList
         this.jarMap = jarMap
+        this.interfaceMap = interfaceMap
 
     }
 
@@ -33,48 +36,107 @@ class CodeScanProcessor {
      * @param jarFile 来源jar包文件
      * @param destFile transform后的目标jar包文件
      */
-    void scanJar(File jarFile, File destFile,String fileMd5) {
-        if (jarFile) {
-            def file = new JarFile(jarFile)
-            Enumeration enumeration = file.entries()
+    void scanJar(File jarFile, File destFile, String fileMd5) {
+        if (!jarFile) return
 
-            boolean isFind = false
-            while (enumeration.hasMoreElements()) {
-                JarEntry jarEntry = (JarEntry) enumeration.nextElement()
-                String entryName = jarEntry.getName()
-                //support包不扫描
-                if (entryName.startsWith("android/support"))
-                    break
-                //   println('----------entryName:' + entryName)
+        if(interfaceMap!=null){
+            if (interfaceMap.containsKey(fileMd5)) {
 
-                if (checkInitClass(entryName, destFile)) {
-                    isFind = true
+                JarConfigInfo jarConfigInfo = interfaceMap.get(fileMd5)
+
+                infoList.each { ext ->
+
+                    jarConfigInfo.classLists.each { list ->
+
+                        if (list.isManagerClass) {
+                            if (ext.initClassName == list.className) {
+
+                                ext.fileContainsInitClass = new File(list.jarFilePath)
+                            }
+
+                        } else if (ext.interfaceName == list.interfaceName) {
+
+                            ext.classList.add(list.className)
+
+                        }
+
+                        for (int i = 0; i < ext.superClassNames.size(); i++) {
+
+                            if (ext.superClassNames.get(i) == list.interfaceName) {
+
+                                ext.classList.add(list.className)
+                            }
+
+                        }
+
+                    }
+
+
                 }
 
-                //是否要过滤这个类，这个可配置
-                if (shouldProcessClass(entryName)) {
-                    InputStream inputStream = file.getInputStream(jarEntry)
 
-                    scanClass(inputStream, jarFile.absolutePath,fileMd5)
+                return
+            }
+        }
 
-                    inputStream.close()
-                }
+
+        def file = new JarFile(jarFile)
+        Enumeration enumeration = file.entries()
+
+        boolean inFindManagerClass = false
+        boolean isFindInterface = false
+
+
+        while (enumeration.hasMoreElements()) {
+            JarEntry jarEntry = (JarEntry) enumeration.nextElement()
+            String entryName = jarEntry.getName()
+            //support包不扫描
+            if (entryName.startsWith("android/support"))
+                break
+
+            if (checkInitClass(entryName, destFile, fileMd5)) {
+                inFindManagerClass = true
 
             }
-            file.close()
 
-            if (!isFind || jarMap == null||jarMap.size() < 0) return
+            //是否要过滤这个类，这个可配置
+            if (shouldProcessClass(entryName)) {
+                InputStream inputStream = file.getInputStream(jarEntry)
 
-           // String md5 = DigestUtils.md5Hex(jarFile.newInputStream())
-            jarMap.remove(fileMd5)
+                if (scanClass(inputStream, fileMd5, jarFile.absolutePath)) {
+
+                    isFindInterface = true
+                }
+
+                inputStream.close()
+            }
+
         }
+        file.close()
+
+
+        if (!inFindManagerClass && !isFindInterface && jarMap != null && jarFile.absolutePath.endsWith(".jar")) {
+
+            if (!jarMap.containsKey(fileMd5)) {
+                jarMap.put(fileMd5, jarFile.absolutePath)
+                //println("没有找到需要把对象注入到管理的类， path--" + filePath + "___" + jarMap.size())
+            }
+
+        }
+
+    }
+
+
+    boolean checkInitClass(String entryName, File file) {
+
+        return checkInitClass(entryName, file, "")
     }
     /**
      * 检查此entryName是不是被注入注册代码的类，如果是则记录此文件（class文件或jar文件）用于后续的注册代码注入
      * @param entryName
      * @param file
      */
-    boolean checkInitClass(String entryName, File file) {
+    boolean checkInitClass(String entryName, File file, String fileMd5) {
         if (entryName == null || !entryName.endsWith(".class"))
             return
 
@@ -84,22 +146,18 @@ class CodeScanProcessor {
         def isFind = false
 
         infoList.each { ext ->
-            // println("file name----"+file.name+"----entryName----"+entryName+"----ext.initClassName---"+ext.initClassName)
-            if (ext.initClassName == entryName) { //（检查是不是codeInsertToClassName 配置 要插入class文件或jar文件）
+            if (ext.initClassName == entryName) {
+                //（检查是不是 todo:codeInsertToClassName 配置 要插入class文件或jar文件）
                 ext.fileContainsInitClass = file//用于后面注入用   这里也应该记录一下。
 
                 if (file.name.endsWith(".jar")) {
+                    addManagerMap(fileMd5,file.absolutePath,entryName)
                     isFind = true
                 }
 
             }
         }
 
-        if (!isFind && file.name.endsWith(".jar")) {
-
-            //jarMap.put()
-            //     println("不codeInsertToClassName---" + file.absolutePath + "--entryName--" + entryName)
-        }
 
         return isFind
 
@@ -166,42 +224,46 @@ class CodeScanProcessor {
      * @return 修改后的字节码文件内容
      */
 
-    void scanClass(File file) {
-        scanClass(file,"")
-    }
-    void scanClass(File file,String fileMd5) {
-        scanClass(new FileInputStream(file), file.absolutePath,fileMd5)
+    boolean scanClass(File file) {
+        return scanClass(file.newInputStream(), "", file.absolutePath)
     }
 
     //refer hack class when object init
-    void scanClass(InputStream inputStream, def filePath, String fileMd5) {
+    boolean scanClass(InputStream inputStream, String fileMd5, String filePath) {
 
-       // println("-------------------scanClass------------------------")
         ClassReader cr = new ClassReader(inputStream)
         ClassWriter cw = new ClassWriter(cr, 0)
 
-        ScanClassVisitor cv = new ScanClassVisitor(Opcodes.ASM5, cw, inputStream, filePath,fileMd5)
+        ScanClassVisitor cv = new ScanClassVisitor(Opcodes.ASM5, cw, fileMd5, filePath)
         cr.accept(cv, ClassReader.EXPAND_FRAMES)
         inputStream.close()
+
+        return cv.isFind
 
 
     }
 
     class ScanClassVisitor extends ClassVisitor {
 
-        InputStream inputStream
-        String filePath
         String fileMd5
-        ScanClassVisitor(int api, ClassVisitor cv, InputStream inputStream, String filePath, String fileMd5) {
+        String filePath
+
+        ScanClassVisitor(int api, ClassVisitor cv, String fileMd5, String filePath) {
             super(api, cv)
-            this.inputStream = inputStream
-            this.filePath = filePath
+
             this.fileMd5 = fileMd5
+            this.filePath = filePath
+
         }
 
         boolean is(int access, int flag) {
             return (access & flag) == flag
         }
+
+        boolean getIsFind() {
+            return isFind
+        }
+        def isFind = false
 
         void visit(int version, int access, String name, String signature,
                    String superName, String[] interfaces) {
@@ -213,17 +275,19 @@ class CodeScanProcessor {
             ) {
                 return
             }
-           // println("-------------------visit------------------------")
-            boolean isFind = false
+
+
             infoList.each { ext ->
                 if (shouldProcessThisClassForRegister(ext, name)) {
                     //判断没有父类的
                     if (superName != 'java/lang/Object' && !ext.superClassNames.isEmpty()) {
                         for (int i = 0; i < ext.superClassNames.size(); i++) {
                             if (ext.superClassNames.get(i) == superName) {
-                                //       println("superClassNames--------"+name)
+                                //    println("superClassNames--------"+name)
                                 ext.classList.add(name) //需要把对象注入到管理类 就是fileContainsInitClass
                                 isFind = true
+
+                                addInterfaceMap(fileMd5, superName, name, filePath)
                                 return
                             }
                         }
@@ -231,8 +295,11 @@ class CodeScanProcessor {
                     if (ext.interfaceName && interfaces != null) {
                         interfaces.each { itName ->
                             if (itName == ext.interfaceName) {
-                                //      println("interfaceName--------"+name)
+
                                 ext.classList.add(name)//需要把对象注入到管理类  就是fileContainsInitClass
+
+                                addInterfaceMap(fileMd5, itName, name, filePath)
+
                                 isFind = true
                             }
                         }
@@ -240,25 +307,93 @@ class CodeScanProcessor {
                 }
             }
 
-         //   println("jar map != null--"+(jarMap != null)+"--"+"!isFind--"+(!isFind)+"---"+(filePath.endsWith(".jar")))
-
-            if (!isFind && filePath.endsWith(".jar") && jarMap != null) {
-                def md5 = fileMd5
-             //   def md5= AutoRegisterHelper.getFileKey(filePath)
-              //  println("jar map size--" + jarMap.size())
-                if(!jarMap.containsKey(md5)){
-                    jarMap.put(md5, filePath)
-                 //   println("没有找到需要把对象注入到管理的类， path--" + filePath + "___" + jarMap.size())
-                }
-
-
-
-            } /*else if (filePath.endsWith(".jar")) {
-
-                println("注入到管理的类， path--" + filePath)
-            }*/
 
         }
+    }
+
+
+    private void addManagerMap(String fileMd5,String fileAbsolutePath,String entryName){
+
+
+        if (interfaceMap==null) return
+
+        if (interfaceMap.containsKey(fileMd5)) {
+            def jarInfo = interfaceMap.get(fileMd5)
+
+            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
+
+            classInfo.setJarMd5(fileMd5)
+            classInfo.setJarFilePath(fileAbsolutePath)
+            classInfo.setIsManagerClass(true)
+            classInfo.setInterfaceName(entryName)
+            classInfo.setClassName(entryName)
+
+            jarInfo.classLists.add(classInfo)
+
+
+        } else {
+
+            def jarInfo = new JarConfigInfo()
+
+            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
+
+            classInfo.setJarMd5(fileMd5)
+            classInfo.setJarFilePath(fileAbsolutePath)
+            classInfo.setIsManagerClass(true)
+            classInfo.setInterfaceName(entryName)
+            classInfo.setClassName(entryName)
+
+            List<JarConfigInfo.ClassList> list = new ArrayList<>()
+
+            list.add(classInfo)
+
+            jarInfo.setClassLists(list)
+
+            interfaceMap.put(fileMd5, jarInfo)
+        }
+    }
+
+
+    private void addInterfaceMap(String fileMd5, String interfaceName, String name, String filePath) {
+
+        if (!filePath.endsWith(".jar")||interfaceMap==null) return
+        def jarConfigInfo
+        if (interfaceMap.containsKey(fileMd5)) {
+            jarConfigInfo = interfaceMap.get(fileMd5)
+
+
+            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
+
+            classInfo.setJarMd5(fileMd5)
+            classInfo.setJarFilePath(filePath)
+            classInfo.setIsManagerClass(false)
+            classInfo.setInterfaceName(interfaceName)
+            classInfo.setClassName(name)
+
+            jarConfigInfo.classLists.add(classInfo)
+
+        } else {
+
+            jarConfigInfo = new JarConfigInfo()
+
+            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
+
+            classInfo.setJarMd5(fileMd5)
+            classInfo.setJarFilePath(filePath)
+            classInfo.setIsManagerClass(false)
+            classInfo.setInterfaceName(interfaceName)
+            classInfo.setClassName(name)
+
+
+            List<JarConfigInfo.ClassList> list = new ArrayList<>()
+            list.add(classInfo)
+
+            jarConfigInfo.setClassLists(list)
+
+            interfaceMap.put(fileMd5, jarConfigInfo)
+        }
+
+
     }
 
 }

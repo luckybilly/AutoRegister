@@ -53,8 +53,6 @@ class RegisterTransform extends Transform {
         project.logger.warn("start auto-register transform...")
         project.logger.warn(config.toString())
 
-        def buildDir = project.getBuildDir().absolutePath + File.separator + FD_INTERMEDIATES + File.separator
-
         long time = System.currentTimeMillis()
         boolean leftSlash = File.separator == '/'
 
@@ -64,11 +62,14 @@ class RegisterTransform extends Transform {
         File jarManagerfile
         Gson gson
         project.logger.warn "-------------------config.closeJarCache--------------------" + closeJarCache
+
+        File interfaceFile
+        Map<String, JarConfigInfo> interfaceMap
         if (!closeJarCache) { //不关闭 JarCache 扫描标识
-            def dir = buildDir + "jarInterfaceConfig.json" //保存不需要扫描的jar ,没有扫描到接口的。
+
             gson = new Gson()
 
-            jarManagerfile = new File(dir)
+            jarManagerfile = AutoRegisterHelper.getJarInterfaceConfigFile(project)
             if (!jarManagerfile.exists()) {
                 jarManagerfile.createNewFile()
                 jarMap = new HashMap<>()
@@ -82,10 +83,15 @@ class RegisterTransform extends Transform {
                 }
 
             }
+
+            interfaceFile = AutoRegisterHelper.getsaveInterfaceConfigFile(project)
+
+            interfaceMap = AutoRegisterHelper.getsaveInterfaceConfigMap(interfaceFile)
+
         }
 
 
-        CodeScanProcessor scanProcessor = new CodeScanProcessor(config.list, jarMap)
+        CodeScanProcessor scanProcessor = new CodeScanProcessor(config.list, jarMap, interfaceMap)
         // 遍历输入文件
         inputs.each { TransformInput input ->
             // 遍历jar
@@ -135,6 +141,15 @@ class RegisterTransform extends Transform {
 
         }
 
+        if(interfaceMap!=null){
+            if(interfaceFile!=null&&interfaceMap.size() > 0&& gson != null){
+                def json = gson.toJson(interfaceMap)
+                interfaceFile.write(json)
+            }
+
+        }
+
+
         def scanFinishTime = System.currentTimeMillis()
         project.logger.error("register scan all class cost time: " + (scanFinishTime - time) + " ms")
 
@@ -179,13 +194,13 @@ class RegisterTransform extends Transform {
         if (scanProcessor.shouldProcessPreDexJar(src.absolutePath)) {
 
             if (jarMap == null) {
-                dest = getDestFile(jarInput,outputProvider)
+                dest = getDestFile(jarInput, outputProvider)
                 scanProcessor.scanJar(src, dest, "")
-            }else {
+            } else {
 
                 def fileMd5 = AutoRegisterHelper.getFileKey(src)
                 if (!jarMap.containsKey(fileMd5)) {
-                    dest = getDestFile(jarInput,outputProvider)
+                    dest = getDestFile(jarInput, outputProvider)
                     scanProcessor.scanJar(src, dest, fileMd5)
                 }
 
@@ -193,7 +208,7 @@ class RegisterTransform extends Transform {
 
 
         }
-        if(dest!=null){
+        if (dest != null) {
             project.logger.info "Copying\t${src.absolutePath} \nto\t\t${dest.absolutePath}"
             FileUtils.copyFile(src, dest)
 
@@ -202,7 +217,7 @@ class RegisterTransform extends Transform {
 
     }
 
-    File getDestFile(JarInput jarInput,TransformOutputProvider outputProvider) {
+    File getDestFile(JarInput jarInput, TransformOutputProvider outputProvider) {
         def destName = jarInput.name
         // 重名名输出文件,因为可能同名,会覆盖
         def hexName = DigestUtils.md5Hex(jarInput.file.absolutePath)
