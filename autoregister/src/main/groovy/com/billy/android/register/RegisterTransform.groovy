@@ -8,7 +8,6 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.gradle.api.Project
 
-import static com.android.builder.model.AndroidProject.FD_INTERMEDIATES
 
 /**
  *
@@ -133,7 +132,7 @@ class RegisterTransform extends Transform {
 
 
         if (jarMap != null) {
-            println("---jarMap10 size-----" + jarMap.size())
+
             if (jarManagerfile != null && jarMap.size() > 0 && gson != null) {
                 def json = gson.toJson(jarMap)
                 jarManagerfile.write(json)
@@ -217,7 +216,7 @@ class RegisterTransform extends Transform {
 
     }
 
-    File getDestFile(JarInput jarInput, TransformOutputProvider outputProvider) {
+   static File getDestFile(JarInput jarInput, TransformOutputProvider outputProvider) {
         def destName = jarInput.name
         // 重名名输出文件,因为可能同名,会覆盖
         def hexName = DigestUtils.md5Hex(jarInput.file.absolutePath)

@@ -23,7 +23,6 @@ class AutoRegisterHelper {
         //速度主要慢在这里。
         if (file != null)
             return DigestUtils.md5Hex(file.newInputStream())
-        //   return file.hashCode()+file.absolutePath
 
     }
 
@@ -42,7 +41,7 @@ class AutoRegisterHelper {
             return new File(baseDir + "RegisterInfo.config")
         } else {
 
-            throw new FileNotFoundException("没有找到路径" + baseDir)
+            throw new FileNotFoundException("Not found  path:" + baseDir)
         }
     }
 
@@ -59,7 +58,7 @@ class AutoRegisterHelper {
             return new File(baseDir + "jarInterfaceConfig.json")
         } else {
 
-            throw new FileNotFoundException("没有找到路径" + baseDir)
+            throw new FileNotFoundException("Not found  path:" + baseDir)
         }
 
 
@@ -74,7 +73,7 @@ class AutoRegisterHelper {
 
         } else {
 
-            throw new FileNotFoundException("没有找到路径" + baseDir)
+            throw new FileNotFoundException("Not found  path:" + baseDir)
         }
     }
 
