@@ -8,16 +8,22 @@ import org.gradle.api.Project
 import static com.android.builder.model.AndroidProject.FD_INTERMEDIATES
 
 /**
- *
+ * 文件操作辅助类
  * @author zhangkb
  * @since 2018/04/13
  */
 class AutoRegisterHelper {
 
+/*
     static String getFileKey(String filePath) {
         return getFileKey(new File(filePath))
     }
-
+*/
+    /**
+     *  获取文件 MD5
+     * @param file 文件
+     * @return MD5
+     */
     static String getFileKey(File file) {
 
         //速度主要慢在这里。
@@ -31,7 +37,7 @@ class AutoRegisterHelper {
     /**
      * 保存 RegisterInfo
      * @param project
-     * @return
+     * @return file
      */
     static File getRegisterInfoFile(Project project) {
 
@@ -48,7 +54,7 @@ class AutoRegisterHelper {
     /**
      * 保存不需要扫描的jar ,没有扫描到接口和需要注入的。
      * @param project
-     * @return
+     * @return File
      */
     static File getJarInterfaceConfigFile(Project project) {
 
@@ -64,6 +70,11 @@ class AutoRegisterHelper {
 
     }
 
+    /**
+     * 保存扫描到的jar
+     * @param project
+     * @return File
+     */
     static File getsaveInterfaceConfigFile(Project project) {
 
         String baseDir = project.getBuildDir().absolutePath + File.separator + FD_INTERMEDIATES + File.separator + autoregisterDir + File.separator
@@ -78,9 +89,9 @@ class AutoRegisterHelper {
     }
 
     /**
-     * 保存扫扫描到接口的jar
-     * @param project
-     * @return
+     * 创建 Map
+     * @param file
+     * @return map
      */
     static Map<String, JarConfigInfo> getsaveInterfaceConfigMap(File file) {
 
@@ -105,18 +116,19 @@ class AutoRegisterHelper {
         return interfaceMap
     }
 
+    /**
+     * 创建文件夹
+     * @param dirPath
+     * @return boolean
+     */
+    static boolean mkdirs(String dirPath) {
+        def baseDirFile = new File(dirPath)
+        def isSuccess = true
+        if (!baseDirFile.isDirectory()) {
+            isSuccess = baseDirFile.mkdirs()
+        }
 
-
-
-
-static boolean mkdirs(String dirPath) {
-    def baseDirFile = new File(dirPath)
-    def isSuccess = true
-    if (!baseDirFile.isDirectory()) {
-        isSuccess = baseDirFile.mkdirs()
+        return isSuccess
     }
-
-    return isSuccess
-}
 
 }

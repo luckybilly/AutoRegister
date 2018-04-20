@@ -37,10 +37,10 @@ class CodeInsertProcessor {
             if (optJar.exists())
                 optJar.delete()
             def file = new JarFile(jarFile)
+
             Enumeration enumeration = file.entries()
             JarOutputStream jarOutputStream = new JarOutputStream(new FileOutputStream(optJar))
 
-            //为什么选择二次查找？不直接得到类？
             while (enumeration.hasMoreElements()) {
                 JarEntry jarEntry = (JarEntry) enumeration.nextElement()
                 String entryName = jarEntry.getName()
@@ -48,7 +48,7 @@ class CodeInsertProcessor {
                 InputStream inputStream = file.getInputStream(jarEntry)
                 jarOutputStream.putNextEntry(zipEntry)
                 if (isInitClass(entryName)) {
-               //     println('codeInsertToClassName:' + entryName)
+                    println('codeInsertToClassName:' + entryName)
                     def bytes = referHackWhenInit(inputStream)
                     jarOutputStream.write(bytes)
                 } else {
@@ -57,6 +57,8 @@ class CodeInsertProcessor {
                 inputStream.close()
                 jarOutputStream.closeEntry()
             }
+
+
             jarOutputStream.close()
             file.close()
 

@@ -95,7 +95,7 @@ class CodeScanProcessor {
                 break
 
             if (checkInitClass(entryName, destFile, fileMd5)) {
-                inFindManagerClass = true
+                inFindManagerClass = true//扫描到ManagerClass
 
             }
 
@@ -105,7 +105,7 @@ class CodeScanProcessor {
 
                 if (scanClass(inputStream, fileMd5, jarFile.absolutePath)) {
 
-                    isFindInterface = true
+                    isFindInterface = true //扫描到接口
                 }
 
                 inputStream.close()
@@ -128,7 +128,6 @@ class CodeScanProcessor {
 
 
     boolean checkInitClass(String entryName, File file) {
-
         return checkInitClass(entryName, file, "")
     }
     /**
@@ -147,7 +146,7 @@ class CodeScanProcessor {
 
         infoList.each { ext ->
             if (ext.initClassName == entryName) {
-                //（检查是不是 todo:codeInsertToClassName 配置 要插入class文件或jar文件）
+                //（检查是不是 codeInsertToClassName 配置 要插入class文件或jar文件）
                 ext.fileContainsInitClass = file//用于后面注入用   这里也应该记录一下。
 
                 if (file.name.endsWith(".jar")) {
