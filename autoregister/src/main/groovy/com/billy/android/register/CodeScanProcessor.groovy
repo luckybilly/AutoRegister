@@ -146,8 +146,8 @@ class CodeScanProcessor {
 
         infoList.each { ext ->
             if (ext.initClassName == entryName) {
-                //（检查是不是 codeInsertToClassName 配置 要插入class文件或jar文件）
-                ext.fileContainsInitClass = file//用于后面注入用   这里也应该记录一下。
+
+                ext.fileContainsInitClass = file
 
                 if (file.name.endsWith(".jar")) {
                     addManagerMap(fileMd5,file.absolutePath,entryName)

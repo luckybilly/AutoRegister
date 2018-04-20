@@ -26,7 +26,7 @@ class CodeInsertProcessor {
             if (file.getName().endsWith('.jar'))
                 processor.insertInitCodeIntoJarFile(file)
             else
-                processor.insertInitCodeIntoClassFile(file)//class file
+                processor.insertInitCodeIntoClassFile(file)
         }
     }
 
