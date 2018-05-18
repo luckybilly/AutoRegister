@@ -47,6 +47,7 @@ class RegisterTransform extends Transform {
                    , TransformOutputProvider outputProvider
                    , boolean isIncremental) throws IOException, TransformException, InterruptedException {
         project.logger.warn("start auto-register transform...")
+        config.reset()
         project.logger.warn(config.toString())
         CodeScanProcessor scanProcessor = new CodeScanProcessor(config.list)
         long time = System.currentTimeMillis()

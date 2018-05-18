@@ -87,6 +87,10 @@ autoregister {
 ```
 更新日志：
 
+### 2018-05-18 V1.3.0
+
+修复gradlew build命令同时打debug和release包时，release包中注册的代码重复的问题
+
 ### 2018-03-12 V1.2.0
 
 解决同时编译多个application module(点击Build -> Rebuild/Build APKs)时出现错误注册的问题

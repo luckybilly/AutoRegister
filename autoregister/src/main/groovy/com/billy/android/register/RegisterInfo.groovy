@@ -29,6 +29,11 @@ class RegisterInfo {
 
     RegisterInfo(){}
 
+    void reset() {
+        fileContainsInitClass = null
+        classList.clear()
+    }
+
     boolean validate() {
         return interfaceName && registerClassName && registerMethodName
     }
