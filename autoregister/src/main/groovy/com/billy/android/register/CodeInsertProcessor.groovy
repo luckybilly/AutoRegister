@@ -37,6 +37,7 @@ class CodeInsertProcessor {
             if (optJar.exists())
                 optJar.delete()
             def file = new JarFile(jarFile)
+
             Enumeration enumeration = file.entries()
             JarOutputStream jarOutputStream = new JarOutputStream(new FileOutputStream(optJar))
 
@@ -56,6 +57,8 @@ class CodeInsertProcessor {
                 inputStream.close()
                 jarOutputStream.closeEntry()
             }
+
+
             jarOutputStream.close()
             file.close()
 
@@ -131,7 +134,7 @@ class CodeInsertProcessor {
     }
 
     class MyMethodVisitor extends MethodVisitor {
-        boolean _static;
+        boolean _static
 
         MyMethodVisitor(int api, MethodVisitor mv, boolean _static) {
             super(api, mv)
