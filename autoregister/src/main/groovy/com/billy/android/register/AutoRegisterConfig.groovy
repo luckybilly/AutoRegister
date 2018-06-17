@@ -89,6 +89,12 @@ class AutoRegisterConfig {
             }
         }
     }
+    void reset() {
+        list.each { info ->
+            info.reset()
+        }
+    }
+
     @Override
     String toString() {
         StringBuilder sb = new StringBuilder(RegisterPlugin.EXT_NAME).append(' [\n')
