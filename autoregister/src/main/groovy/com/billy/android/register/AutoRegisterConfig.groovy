@@ -1,6 +1,7 @@
 package com.billy.android.register
 
 import org.gradle.api.Project
+
 /**
  * aop的配置信息
  * @author billy.qi
@@ -13,8 +14,9 @@ class AutoRegisterConfig {
     ArrayList<RegisterInfo> list = new ArrayList<>()
 
     Project project
+    def closeJarCache = false
 
-    AutoRegisterConfig(){}
+    AutoRegisterConfig() {}
 
     void convertConfig() {
         registerInfo.each { map ->
@@ -42,6 +44,46 @@ class AutoRegisterConfig {
                 project.logger.error('auto register config error: scanInterface, codeInsertToClassName and registerMethodName should not be null\n' + info.toString())
             }
 
+        }
+
+        if (!closeJarCache) {
+            checkRegisterInfo()
+        }
+    }
+
+    private void checkRegisterInfo() {
+
+        def registerInfo = AutoRegisterHelper.getRegisterInfoFile(project)
+
+        def listInfo = list.toString()
+
+        if (!registerInfo.exists()) {
+            registerInfo.createNewFile()
+            if (registerInfo.canRead() && registerInfo.canWrite()) {
+                registerInfo.write(listInfo)
+            } else {
+                project.logger.error('------wirte registerInfo error--------')
+            }
+
+        } else {
+            def info = registerInfo.text
+            if (info != listInfo) {
+
+                def jarInterfaceConfigFile = AutoRegisterHelper.getJarInterfaceConfigFile(project)
+                def saveInterfaceConfigFile = AutoRegisterHelper.getsaveInterfaceConfigFile(project)
+                if (jarInterfaceConfigFile.exists()) {
+                    //registerInfo 配置有改动就删除  jarInterfaceConfig.json
+                    jarInterfaceConfigFile.delete()
+                }
+
+                if (saveInterfaceConfigFile.exists()) {
+                    //registerInfo 配置有改动就删除  saveInterfaceConfigFile.json
+                    saveInterfaceConfigFile.delete()
+                }
+                registerInfo.write(listInfo)
+
+
+            }
         }
     }
 
