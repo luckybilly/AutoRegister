@@ -16,15 +16,12 @@ import java.util.regex.Pattern
 class CodeScanProcessor {
 
     ArrayList<RegisterInfo> infoList
-    HashMap<String, String> jarMap
-    Map<String, JarConfigInfo> interfaceMap
+    Map<String, ScanJarHarvest> cacheMap
+    Set<String> cachedJarContainsInitClass = new HashSet<>()
 
-    CodeScanProcessor(ArrayList<RegisterInfo> infoList, HashMap<String, String> jarMap,
-                      Map<String, JarConfigInfo> interfaceMap) {
+    CodeScanProcessor(ArrayList<RegisterInfo> infoList, Map<String, ScanJarHarvest> cacheMap) {
         this.infoList = infoList
-        this.jarMap = jarMap
-        this.interfaceMap = interfaceMap
-
+        this.cacheMap = cacheMap
     }
 
     /**
@@ -32,15 +29,12 @@ class CodeScanProcessor {
      * @param jarFile 来源jar包文件
      * @param destFile transform后的目标jar包文件
      */
-    void scanJar(File jarFile, File destFile) {
-        if (!jarFile) return
-
+    boolean scanJar(File jarFile, File destFile) {
         //检查是否存在缓存，有就添加class list 和 设置fileContainsInitClass
-        if (checkClassListCache(jarFile, destFile)) return
+        if (!jarFile || hitCache(jarFile, destFile))
+            return false
 
-        def fileKey = AutoRegisterHelper.getFileKey(jarFile)
-        boolean inFindManagerClass = false
-        boolean isFindInterface = false
+        def srcFilePath = jarFile.absolutePath
         def file = new JarFile(jarFile)
         Enumeration enumeration = file.entries()
 
@@ -50,61 +44,45 @@ class CodeScanProcessor {
             //support包不扫描
             if (entryName.startsWith("android/support"))
                 break
-
-            if (checkInitClass(entryName, destFile, fileKey)) {
-                inFindManagerClass = true//扫描到ManagerClass
-            }
+            checkInitClass(entryName, destFile, srcFilePath)
             //是否要过滤这个类，这个可配置
             if (shouldProcessClass(entryName)) {
                 InputStream inputStream = file.getInputStream(jarEntry)
-
-                if (scanClass(inputStream, jarFile.absolutePath)) {
-                    isFindInterface = true //扫描到接口
-                }
+                scanClass(inputStream, jarFile.absolutePath)
                 inputStream.close()
             }
         }
         if (null != file) {
             file.close()
         }
-        if (!inFindManagerClass && !isFindInterface && jarMap != null && jarFile.absolutePath.endsWith(".jar")) {
-
-            if (!jarMap.containsKey(jarFile.absolutePath)) {
-                jarMap.put(jarFile.absolutePath, jarFile.absolutePath)
-                //  println("没有找到需要把对象注入到管理的类， path--" + jarFile.absolutePath + "___" + jarMap.size())
-            }
-        }
+        //加入缓存
+        addToCacheMap(null, null, srcFilePath)
+        return true
     }
     /**
      * 检查此entryName是不是被注入注册代码的类，如果是则记录此文件（class文件或jar文件）用于后续的注册代码注入
      * @param entryName
-     * @param file
+     * @param destFile
      */
-    boolean checkInitClass(String entryName, File file) {
-        checkInitClass(entryName, file, "")
+    boolean checkInitClass(String entryName, File destFile) {
+        checkInitClass(entryName, destFile, "")
     }
 
-    boolean checkInitClass(String entryName, File file, String srcFilePath) {
+    boolean checkInitClass(String entryName, File destFile, String srcFilePath) {
         if (entryName == null || !entryName.endsWith(".class"))
             return
         entryName = entryName.substring(0, entryName.lastIndexOf('.'))
-        def isFind = false
+        def found = false
         infoList.each { ext ->
-            // println("------entryName:----"+entryName)
             if (ext.initClassName == entryName) {
-                ext.fileContainsInitClass = file
-                if (file.name.endsWith(".jar")) {
-                    println(srcFilePath + "--find manager class:" + entryName)
-                    addManagerMap(srcFilePath, entryName)
-                    isFind = true
+                ext.fileContainsInitClass = destFile
+                if (destFile.name.endsWith(".jar")) {
+                    addToCacheMap(null, entryName, srcFilePath)
+                    found = true
                 }
             }
         }
-        return isFind
-    }
-
-    static boolean shouldProcessPreDexJar(String path) {
-        return !path.contains("com.android.support") && !path.contains("/android/m2repository")
+        return found
     }
 
     // file in folder like these
@@ -175,12 +153,12 @@ class CodeScanProcessor {
         cr.accept(cv, ClassReader.EXPAND_FRAMES)
         inputStream.close()
 
-        return cv.isFind
+        return cv.found
     }
 
     class ScanClassVisitor extends ClassVisitor {
         private String filePath
-        private def isFind = false
+        private def found = false
 
         ScanClassVisitor(int api, ClassVisitor cv, String filePath) {
             super(api, cv)
@@ -191,8 +169,8 @@ class CodeScanProcessor {
             return (access & flag) == flag
         }
 
-        boolean getIsFind() {
-            return isFind
+        boolean isFound() {
+            return found
         }
 
         void visit(int version, int access, String name, String signature,
@@ -212,8 +190,8 @@ class CodeScanProcessor {
                             if (ext.superClassNames.get(i) == superName) {
                                 //  println("superClassNames--------"+name)
                                 ext.classList.add(name) //需要把对象注入到管理类 就是fileContainsInitClass
-                                isFind = true
-                                addInterfaceMap(superName, name, filePath)
+                                found = true
+                                addToCacheMap(superName, name, filePath)
                                 return
                             }
                         }
@@ -222,9 +200,8 @@ class CodeScanProcessor {
                         interfaces.each { itName ->
                             if (itName == ext.interfaceName) {
                                 ext.classList.add(name)//需要把对象注入到管理类  就是fileContainsInitClass
-                                println("find interface:" + name)
-                                addInterfaceMap(itName, name, filePath)
-                                isFind = true
+                                addToCacheMap(itName, name, filePath)
+                                found = true
                             }
                         }
                     }
@@ -233,75 +210,29 @@ class CodeScanProcessor {
         }
     }
     /**
-     * 添加扫描到的ManagerClass到map
-     * @param fileAbsolutePath
-     * @param entryName
-     */
-    private void addManagerMap(String fileAbsolutePath, String entryName) {
-        if (interfaceMap == null) return
-        if (interfaceMap.containsKey(fileAbsolutePath)) {
-            def jarInfo = interfaceMap.get(fileAbsolutePath)
-            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
-            classInfo.setJarFilePath(fileAbsolutePath)
-            classInfo.setIsManagerClass(true)
-            classInfo.setInterfaceName(entryName)
-            classInfo.setClassName(entryName)
-
-            jarInfo.classLists.add(classInfo)
-
-        } else {
-            def jarInfo = new JarConfigInfo()
-            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
-
-            classInfo.setJarFilePath(fileAbsolutePath)
-            classInfo.setIsManagerClass(true)
-            classInfo.setInterfaceName(entryName)
-            classInfo.setClassName(entryName)
-
-            List<JarConfigInfo.ClassList> list = new ArrayList<>()
-            list.add(classInfo)
-            jarInfo.setClassLists(list)
-
-            interfaceMap.put(fileAbsolutePath, jarInfo)
-        }
-    }
-    /**
-     * 添加扫描到的接口类到map
+     * 扫描到的类添加到map
      * @param interfaceName
      * @param name
-     * @param filePath
+     * @param srcFilePath
      */
-    private void addInterfaceMap(String interfaceName, String name, String filePath) {
-
-        if (!filePath.endsWith(".jar") || interfaceMap == null) return
-        def jarConfigInfo
-        if (interfaceMap.containsKey(filePath)) {
-            jarConfigInfo = interfaceMap.get(filePath)
-
-            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
-            classInfo.setJarFilePath(filePath)
-            classInfo.setIsManagerClass(false)
-            classInfo.setInterfaceName(interfaceName)
-            classInfo.setClassName(name)
-
-            jarConfigInfo.classLists.add(classInfo)
-
-        } else {
-
-            jarConfigInfo = new JarConfigInfo()
-
-            JarConfigInfo.ClassList classInfo = new JarConfigInfo.ClassList()
-            classInfo.setJarFilePath(filePath)
-            classInfo.setIsManagerClass(false)
-            classInfo.setInterfaceName(interfaceName)
-            classInfo.setClassName(name)
-
-            List<JarConfigInfo.ClassList> list = new ArrayList<>()
-            list.add(classInfo)
-            jarConfigInfo.setClassLists(list)
-
-            interfaceMap.put(filePath, jarConfigInfo)
+    private void addToCacheMap(String interfaceName, String name, String srcFilePath) {
+        if (!srcFilePath.endsWith(".jar") || cacheMap == null) return
+        def jarHarvest = cacheMap.get(srcFilePath)
+        if (!jarHarvest) {
+            jarHarvest = new ScanJarHarvest()
+            cacheMap.put(srcFilePath, jarHarvest)
         }
+        if (name) {
+            ScanJarHarvest.Harvest classInfo = new ScanJarHarvest.Harvest()
+            classInfo.setIsInitClass(interfaceName == null)
+            classInfo.setInterfaceName(interfaceName)
+            classInfo.setClassName(name)
+            jarHarvest.harvestList.add(classInfo)
+        }
+    }
+
+    boolean isCachedJarContainsInitClass(String filePath) {
+        return cachedJarContainsInitClass.contains(filePath)
     }
 
     /**
@@ -310,25 +241,26 @@ class CodeScanProcessor {
      * @param destFile
      * @return 是否存在缓存
      */
-    boolean checkClassListCache(File jarFile, File destFile) {
-        def fileKey = AutoRegisterHelper.getFileKey(jarFile)
-        if (interfaceMap != null) {
-            if (interfaceMap.containsKey(fileKey)) {
-                JarConfigInfo jarConfigInfo = interfaceMap.get(fileKey)
-                infoList.each { ext ->
-                    jarConfigInfo.classLists.each { list ->
-                        //       println("----list-------"+list.className)
-                        if (list.isManagerClass) {
-                            if (ext.initClassName == list.className) {
-                                ext.fileContainsInitClass = destFile
+    boolean hitCache(File jarFile, File destFile) {
+        def jarFilePath = jarFile.absolutePath
+        if (cacheMap != null) {
+            ScanJarHarvest scanJarHarvest = cacheMap.get(jarFilePath)
+            if (scanJarHarvest) {
+                infoList.each { info ->
+                    scanJarHarvest.harvestList.each { harvest ->
+                        //       println("----harvest-------"+harvest.className)
+                        if (harvest.isInitClass) {
+                            if (info.initClassName == harvest.className) {
+                                info.fileContainsInitClass = destFile
+                                cachedJarContainsInitClass.add(jarFilePath)
                             }
-                        } else if (ext.interfaceName == list.interfaceName) {
-                            ext.classList.add(list.className)
+                        } else if (info.interfaceName == harvest.interfaceName) {
+                            info.classList.add(harvest.className)
                         }
 
-                        for (int i = 0; i < ext.superClassNames.size(); i++) {
-                            if (ext.superClassNames.get(i) == list.interfaceName) {
-                                ext.classList.add(list.className)
+                        for (int i = 0; i < info.superClassNames.size(); i++) {
+                            if (info.superClassNames.get(i) == harvest.interfaceName) {
+                                info.classList.add(harvest.className)
                             }
                         }
                     }

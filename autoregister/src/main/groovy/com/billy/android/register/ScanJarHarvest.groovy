@@ -4,12 +4,11 @@ package com.billy.android.register
  * @author zhangkb
  * @since 2018/04/17
  */
-class JarConfigInfo {
-    List<ClassList> classLists
-    class ClassList{
+class ScanJarHarvest {
+    List<Harvest> harvestList = new ArrayList<>()
+    class Harvest {
         String className
-        String jarFilePath
         String interfaceName
-        boolean  isManagerClass
+        boolean isInitClass
     }
 }

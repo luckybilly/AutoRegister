@@ -1,109 +1,88 @@
 package com.billy.android.register
 
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import org.gradle.api.Project
 
-import static com.android.builder.model.AndroidProject.FD_INTERMEDIATES
+import java.lang.reflect.Type
 
+import static com.android.builder.model.AndroidProject.FD_INTERMEDIATES
 /**
  * 文件操作辅助类
  * @author zhangkb
  * @since 2018/04/13
  */
 class AutoRegisterHelper {
+    final static def CACHE_INFO_DIR = "auto-register"
 
     /**
-     *  获取文件 absolutePath
-     * @param file 文件
-     * @return absolutePath
-     */
-    static String getFileKey(File file) {
-
-        if (file != null) {
-            return file.absolutePath //以前是以文件md5为key
-        }
-        return null
-    }
-
-
-    final static def autoregisterDir = "auto-register"
-    /**
-     * 保存 RegisterInfo
+     * 缓存自动注册配置的文件
      * @param project
      * @return file
      */
-    static File getRegisterInfoFile(Project project) {
-
-        String baseDir = project.getBuildDir().absolutePath + File.separator + FD_INTERMEDIATES + File.separator + autoregisterDir + File.separator
-
+    static File getRegisterInfoCacheFile(Project project) {
+        String baseDir = getCacheFileDir(project)
         if (mkdirs(baseDir)) {
-            return new File(baseDir + "RegisterInfo.config")
+            return new File(baseDir + "register-info.config")
         } else {
             throw new FileNotFoundException("Not found  path:" + baseDir)
         }
     }
 
     /**
-     * 保存不需要扫描的jar ,没有扫描到接口和需要注入的。
+     * 缓存扫描到结果的文件
      * @param project
      * @return File
      */
-    static File getJarInterfaceConfigFile(Project project) {
-
-        String baseDir = project.getBuildDir().absolutePath + File.separator + FD_INTERMEDIATES + File.separator + autoregisterDir + File.separator
-
+    static File getRegisterCacheFile(Project project) {
+        String baseDir = getCacheFileDir(project)
         if (mkdirs(baseDir)) {
-            return new File(baseDir + "jarInterfaceConfig.json")
-        } else {
-            throw new FileNotFoundException("Not found  path:" + baseDir)
-        }
-
-
-    }
-
-    /**
-     * 保存扫描到的jar
-     * @param project
-     * @return File
-     */
-    static File getsaveInterfaceConfigFile(Project project) {
-
-        String baseDir = project.getBuildDir().absolutePath + File.separator + FD_INTERMEDIATES + File.separator + autoregisterDir + File.separator
-
-        if (mkdirs(baseDir)) {
-            return new File(baseDir + "saveInterfaceConfig.json")
-
+            return new File(baseDir + "register-cache.json")
         } else {
             throw new FileNotFoundException("Not found  path:" + baseDir)
         }
     }
+    /**
+     * 将扫描到的结果缓存起来
+     * @param cacheFile
+     * @param harvests
+     */
+    static void cacheRegisterHarvest(File cacheFile, String harvests) {
+        if (!cacheFile || !harvests)
+            return
+        cacheFile.getParentFile().mkdirs()
+        if (!cacheFile.exists())
+            cacheFile.createNewFile()
+        cacheFile.write(harvests)
+    }
+
+    private static String getCacheFileDir(Project project) {
+        return project.getBuildDir().absolutePath + File.separator + FD_INTERMEDIATES + File.separator + CACHE_INFO_DIR + File.separator
+    }
 
     /**
-     * 创建 Map
-     * @param file
-     * @return map
+     * 读取文件内容并创建Map
+     * @param file 缓存文件
+     * @param type map的类型
+     * @return
      */
-    static Map<String, JarConfigInfo> getsaveInterfaceConfigMap(File file) {
-
-        Map<String, JarConfigInfo> interfaceMap
-
-        if (!file.exists()) {
-            file.createNewFile()
-            interfaceMap = new HashMap<String, JarConfigInfo>()
-        } else {
-
-            def text = file.text
-            if (text == "" || text == null) {
-                interfaceMap = new HashMap<String, JarConfigInfo>()
-            } else {
-                interfaceMap = new Gson().fromJson(text, new TypeToken<HashMap<String, JarConfigInfo>>() {
-                }.getType())
+    static Map readToMap(File file, Type type) {
+        Map map = null
+        if (file.exists()) {
+            if (type) {
+                def text = file.text
+                if (text) {
+                    try {
+                        map = new Gson().fromJson(text, type)
+                    } catch (Exception e) {
+                        e.printStackTrace()
+                    }
+                }
             }
-
         }
-
-        return interfaceMap
+        if (map == null) {
+            map = new HashMap()
+        }
+        return map
     }
 
     /**

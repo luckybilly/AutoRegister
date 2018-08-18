@@ -38,6 +38,10 @@ class RegisterTransform extends Transform {
         return TransformManager.SCOPE_FULL_PROJECT
     }
 
+    /**
+     * 是否支持增量编译
+     * @return
+     */
     @Override
     boolean isIncremental() {
         return true
@@ -49,60 +53,49 @@ class RegisterTransform extends Transform {
                    , TransformOutputProvider outputProvider
                    , boolean isIncremental) throws IOException, TransformException, InterruptedException {
         project.logger.warn("start auto-register transform...")
-        // clean build cache
-        if (!isIncremental) {
-            outputProvider.deleteAll()
-        }
         config.reset()
         project.logger.warn(config.toString())
+        def clearCache = !isIncremental
+        // clean build cache
+        if (clearCache) {
+            outputProvider.deleteAll()
+        }
 
         long time = System.currentTimeMillis()
         boolean leftSlash = File.separator == '/'
 
 
-        def closeJarCache = config.closeJarCache
+        def cacheEnabled = config.cacheEnabled
+        println("auto-register-----------isIncremental:${isIncremental}--------config.cacheEnabled:${cacheEnabled}--------------------\n")
 
-        Map<String, String> jarMap = null
         File jarManagerfile = null
+        Map<String, ScanJarHarvest> cacheMap = null
+        File cacheFile = null
         Gson gson = null
-        project.logger.warn "-------------------config.closeJarCache--------------------" + closeJarCache
 
-        File interfaceFile
-        Map<String, JarConfigInfo> interfaceMap = null
-        if (!closeJarCache) { //不关闭 JarCache 扫描标识
+        if (cacheEnabled) { //开启了缓存
             gson = new Gson()
-            jarManagerfile = AutoRegisterHelper.getJarInterfaceConfigFile(project)
-            if (!jarManagerfile.exists()) {
-                jarManagerfile.createNewFile()
-                jarMap = new HashMap<>()
-            } else {
-                def text = jarManagerfile.text
-                if (text == "" || text == null) {
-                    jarMap = new HashMap<>()
-                } else {
-                    jarMap = gson.fromJson(text, new TypeToken<HashMap<String, String>>() {
-                    }.getType())
-                }
-
-            }
-
-            interfaceFile = AutoRegisterHelper.getsaveInterfaceConfigFile(project)
-            interfaceMap = AutoRegisterHelper.getsaveInterfaceConfigMap(interfaceFile)
-
+            cacheFile = AutoRegisterHelper.getRegisterCacheFile(project)
+            if (clearCache && cacheFile.exists())
+                cacheFile.delete()
+            cacheMap = AutoRegisterHelper.readToMap(cacheFile, new TypeToken<HashMap<String, ScanJarHarvest>>() {
+            }.getType())
         }
 
-        CodeScanProcessor scanProcessor = new CodeScanProcessor(config.list, jarMap, interfaceMap)
+        CodeScanProcessor scanProcessor = new CodeScanProcessor(config.list, cacheMap)
 
         // 遍历输入文件
         inputs.each { TransformInput input ->
             // 遍历jar
             input.jarInputs.each { JarInput jarInput ->
-
-                removeChangeJar(jarInput, jarMap, interfaceMap)
-                scanJar(jarInput, outputProvider, scanProcessor, jarMap)
+                if (jarInput.status != Status.NOTCHANGED && cacheMap) {
+                    cacheMap.remove(jarInput.file.absolutePath)
+                }
+                scanJar(jarInput, outputProvider, scanProcessor)
             }
             // 遍历目录
             input.directoryInputs.each { DirectoryInput directoryInput ->
+                long dirTime = System.currentTimeMillis();
                 // 获得产物的目录
                 File dest = outputProvider.getContentLocation(directoryInput.name, directoryInput.contentTypes, directoryInput.scopes, Format.DIRECTORY)
                 String root = directoryInput.file.absolutePath
@@ -122,25 +115,16 @@ class RegisterTransform extends Transform {
                         }
                     }
                 }
-                project.logger.info "Copying\t${directoryInput.file.absolutePath} \nto\t\t${dest.absolutePath}"
+                long scanTime = System.currentTimeMillis();
                 // 处理完后拷到目标文件
                 FileUtils.copyDirectory(directoryInput.file, dest)
+                println "auto-register cost time: ${System.currentTimeMillis() - dirTime}, scan time: ${scanTime - dirTime}. path=${root}"
             }
         }
 
-
-        if (jarMap != null) {
-            if (jarManagerfile != null && jarMap.size() > 0 && gson != null) {
-                def json = gson.toJson(jarMap)
-                jarManagerfile.write(json)
-            }
-        }
-
-        if (interfaceMap != null) {
-            if (interfaceFile != null && interfaceMap.size() > 0 && gson != null) {
-                def json = gson.toJson(interfaceMap)
-                interfaceFile.write(json)
-            }
+        if (cacheMap != null && cacheFile && gson) {
+            def json = gson.toJson(cacheMap)
+            AutoRegisterHelper.cacheRegisterHarvest(cacheFile, json)
         }
 
         def scanFinishTime = System.currentTimeMillis()
@@ -148,6 +132,7 @@ class RegisterTransform extends Transform {
 
         config.list.each { ext ->
             if (ext.fileContainsInitClass) {
+                println('')
                 println("insert register code to file:" + ext.fileContainsInitClass.absolutePath)
                 if (ext.classList.isEmpty()) {
                     project.logger.error("No class implements found for interface:" + ext.interfaceName)
@@ -155,7 +140,6 @@ class RegisterTransform extends Transform {
                     ext.classList.each {
                         println(it)
                     }
-                    println('')
                     CodeInsertProcessor.insertInitCodeTo(ext)
                 }
             } else {
@@ -167,37 +151,23 @@ class RegisterTransform extends Transform {
         project.logger.error("register cost time: " + (finishTime - time) + " ms")
     }
 
-    void scanJar(JarInput jarInput, TransformOutputProvider outputProvider,
-                 CodeScanProcessor scanProcessor, Map<String, String> jarMap) {
+    void scanJar(JarInput jarInput, TransformOutputProvider outputProvider, CodeScanProcessor scanProcessor) {
 
-        project.logger.warn(jarInput.file.absolutePath + '--jarInput.status-----' + jarInput.status)
         // 获得输入文件
         File src = jarInput.file
-        def fileKey = AutoRegisterHelper.getFileKey(src)//以路径为key
-
-        File dest
-        //遍历jar的字节码类文件，找到需要自动注册的component
-        if (scanProcessor.shouldProcessPreDexJar(fileKey)) {
-
-            if (jarMap == null) {
-                dest = getDestFile(jarInput, outputProvider)
-                scanProcessor.scanJar(src, dest)
-            } else {
-
-                //  def fileKey = AutoRegisterHelper.getFileKey(src)
-
-                if (!jarMap.containsKey(fileKey)) {
-                    dest = getDestFile(jarInput, outputProvider)
-                    scanProcessor.scanJar(src, dest)
-                } else {
-                    //   println("skip:"+fileKey)
-                }
-            }
+        //遍历jar的字节码类文件，找到需要自动注册的类
+        File dest = getDestFile(jarInput, outputProvider)
+        long time = System.currentTimeMillis();
+        if (!scanProcessor.scanJar(src, dest) //直接读取了缓存，没有执行实际的扫描
+                //此jar文件中不需要被注入代码
+                //为了避免增量编译时代码注入重复，被注入代码的jar包每次都重新复制
+                && !scanProcessor.isCachedJarContainsInitClass(src.absolutePath)) {
+            //不需要执行文件复制，直接返回
+            return
         }
-        if (dest != null) {
-            project.logger.info "Copying\t${src.absolutePath} \nto\t\t${dest.absolutePath}"
-            FileUtils.copyFile(src, dest)
-        }
+        println "auto-register cost time: " + (System.currentTimeMillis() - time) + " ms to scan jar file:" + dest.absolutePath
+        //复制jar文件到transform目录：build/transforms/auto-register/
+        FileUtils.copyFile(src, dest)
     }
 
     static File getDestFile(JarInput jarInput, TransformOutputProvider outputProvider) {
@@ -209,20 +179,7 @@ class RegisterTransform extends Transform {
         }
         // 获得输出文件
         File dest = outputProvider.getContentLocation(destName + "_" + hexName, jarInput.contentTypes, jarInput.scopes, Format.JAR)
-
         return dest
-
     }
 
-    static void removeChangeJar(JarInput jarInput, Map<String, String> jarMap,Map<String, JarConfigInfo> interfaceMap ) {
-        if (jarInput.status == Status.NOTCHANGED) return
-        def fileKey=AutoRegisterHelper.getFileKey(jarInput.file)
-
-        if (jarMap) {
-            jarMap.remove(fileKey)
-        }
-        if (interfaceMap) {
-            interfaceMap.remove(fileKey)
-        }
-    }
 }

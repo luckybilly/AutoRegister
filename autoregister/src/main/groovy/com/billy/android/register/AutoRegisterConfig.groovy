@@ -14,7 +14,7 @@ class AutoRegisterConfig {
     ArrayList<RegisterInfo> list = new ArrayList<>()
 
     Project project
-    def closeJarCache = false
+    def cacheEnabled = true
 
     AutoRegisterConfig() {}
 
@@ -46,44 +46,38 @@ class AutoRegisterConfig {
 
         }
 
-        if (!closeJarCache) {
+        if (cacheEnabled) {
             checkRegisterInfo()
         }
     }
 
     private void checkRegisterInfo() {
-
-        def registerInfo = AutoRegisterHelper.getRegisterInfoFile(project)
-
+        def registerInfo = AutoRegisterHelper.getRegisterInfoCacheFile(project)
         def listInfo = list.toString()
+        def sameInfo = false
 
         if (!registerInfo.exists()) {
             registerInfo.createNewFile()
-            if (registerInfo.canRead() && registerInfo.canWrite()) {
-                registerInfo.write(listInfo)
-            } else {
-                project.logger.error('------wirte registerInfo error--------')
-            }
-
-        } else {
+        } else if(registerInfo.canRead()) {
             def info = registerInfo.text
-            if (info != listInfo) {
-
-                def jarInterfaceConfigFile = AutoRegisterHelper.getJarInterfaceConfigFile(project)
-                def saveInterfaceConfigFile = AutoRegisterHelper.getsaveInterfaceConfigFile(project)
-                if (jarInterfaceConfigFile.exists()) {
-                    //registerInfo 配置有改动就删除  jarInterfaceConfig.json
-                    jarInterfaceConfigFile.delete()
-                }
-
-                if (saveInterfaceConfigFile.exists()) {
-                    //registerInfo 配置有改动就删除  saveInterfaceConfigFile.json
-                    saveInterfaceConfigFile.delete()
-                }
-                registerInfo.write(listInfo)
-
-
+            sameInfo = info == listInfo
+            if (!sameInfo) {
+                project.logger.error("auto-register registerInfo has been changed since project(':$project.name') last build")
             }
+        } else {
+            project.logger.error('auto-register read registerInfo error--------')
+        }
+        if (!sameInfo) {
+            def saveInterfaceConfigFile = AutoRegisterHelper.getRegisterCacheFile(project)
+            if (saveInterfaceConfigFile.exists()) {
+                //registerInfo 配置有改动就删除緩存文件
+                saveInterfaceConfigFile.delete()
+            }
+        }
+        if (registerInfo.canWrite()) {
+            registerInfo.write(listInfo)
+        } else {
+            project.logger.error('auto-register write registerInfo error--------')
         }
     }
 

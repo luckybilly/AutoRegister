@@ -24,14 +24,14 @@ class CodeInsertProcessor {
             CodeInsertProcessor processor = new CodeInsertProcessor(extension)
             File file = extension.fileContainsInitClass
             if (file.getName().endsWith('.jar'))
-                processor.insertInitCodeIntoJarFile(file)
+                processor.generateCodeIntoJarFile(file)
             else
-                processor.insertInitCodeIntoClassFile(file)
+                processor.generateCodeIntoClassFile(file)
         }
     }
 
     //处理jar包中的class代码注入
-    private File insertInitCodeIntoJarFile(File jarFile) {
+    private File generateCodeIntoJarFile(File jarFile) {
         if (jarFile) {
             def optJar = new File(jarFile.getParent(), jarFile.name + ".opt")
             if (optJar.exists())
@@ -47,8 +47,8 @@ class CodeInsertProcessor {
                 InputStream inputStream = file.getInputStream(jarEntry)
                 jarOutputStream.putNextEntry(zipEntry)
                 if (isInitClass(entryName)) {
-                    println('codeInsertToClassName:' + entryName)
-                    def bytes = referHackWhenInit(inputStream)
+                    println('generate code into:' + entryName)
+                    def bytes = doGenerateCode(inputStream)
                     jarOutputStream.write(bytes)
                 } else {
                     jarOutputStream.write(IOUtils.toByteArray(inputStream))
@@ -81,13 +81,13 @@ class CodeInsertProcessor {
      * @param file class文件
      * @return 修改后的字节码文件内容
      */
-    private byte[] insertInitCodeIntoClassFile(File file) {
+    private byte[] generateCodeIntoClassFile(File file) {
         def optClass = new File(file.getParent(), file.name + ".opt")
 
         FileInputStream inputStream = new FileInputStream(file)
         FileOutputStream outputStream = new FileOutputStream(optClass)
 
-        def bytes = referHackWhenInit(inputStream)
+        def bytes = doGenerateCode(inputStream)
         outputStream.write(bytes)
         inputStream.close()
         outputStream.close()
@@ -98,9 +98,7 @@ class CodeInsertProcessor {
         return bytes
     }
 
-
-    //refer hack class when object init
-    private byte[] referHackWhenInit(InputStream inputStream) {
+    private byte[] doGenerateCode(InputStream inputStream) {
         ClassReader cr = new ClassReader(inputStream)
         ClassWriter cw = new ClassWriter(cr, 0)
         ClassVisitor cv = new MyClassVisitor(Opcodes.ASM5, cw)
