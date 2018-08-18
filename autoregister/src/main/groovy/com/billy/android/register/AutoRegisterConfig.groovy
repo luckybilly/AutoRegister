@@ -48,6 +48,9 @@ class AutoRegisterConfig {
 
         if (cacheEnabled) {
             checkRegisterInfo()
+        } else {
+            deleteFile(AutoRegisterHelper.getRegisterInfoCacheFile(project))
+            deleteFile(AutoRegisterHelper.getRegisterCacheFile(project))
         }
     }
 
@@ -68,16 +71,19 @@ class AutoRegisterConfig {
             project.logger.error('auto-register read registerInfo error--------')
         }
         if (!sameInfo) {
-            def saveInterfaceConfigFile = AutoRegisterHelper.getRegisterCacheFile(project)
-            if (saveInterfaceConfigFile.exists()) {
-                //registerInfo 配置有改动就删除緩存文件
-                saveInterfaceConfigFile.delete()
-            }
+            deleteFile(AutoRegisterHelper.getRegisterCacheFile(project))
         }
         if (registerInfo.canWrite()) {
             registerInfo.write(listInfo)
         } else {
             project.logger.error('auto-register write registerInfo error--------')
+        }
+    }
+
+    private void deleteFile(File file) {
+        if (file.exists()) {
+            //registerInfo 配置有改动就删除緩存文件
+            file.delete()
         }
     }
 
@@ -89,14 +95,16 @@ class AutoRegisterConfig {
 
     @Override
     String toString() {
-        StringBuilder sb = new StringBuilder(RegisterPlugin.EXT_NAME).append(' [\n')
+        StringBuilder sb = new StringBuilder(RegisterPlugin.EXT_NAME).append(' = {')
+                .append('\n  cacheEnabled = ').append(cacheEnabled)
+                .append('\n  registerInfo = [\n')
         def size = list.size()
         for (int i = 0; i < size; i++) {
             sb.append('\t' + list.get(i).toString().replaceAll('\n', '\n\t'))
             if (i < size - 1)
                 sb.append(',\n')
         }
-        sb.append('\n]')
+        sb.append('\n  ]\n}')
         return sb.toString()
     }
 }
