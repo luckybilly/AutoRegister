@@ -87,6 +87,10 @@ autoregister {
 ```
 更新日志：
 
+### 2018-08-18 V1.4.1
+
+支持增量编译及其开关（默认开启，可通过配置`cacheEnabled = false`来关闭增量编译，[参考demo](https://github.com/luckybilly/AutoRegister/blob/master/app/build.gradle)）
+
 ### 2018-05-18 V1.3.0
 
 修复gradlew build命令同时打debug和release包时，release包中注册的代码重复的问题

@@ -1,6 +1,7 @@
 package com.billy.android.register
 
 import org.gradle.api.Project
+
 /**
  * aop的配置信息
  * @author billy.qi
@@ -13,8 +14,9 @@ class AutoRegisterConfig {
     ArrayList<RegisterInfo> list = new ArrayList<>()
 
     Project project
+    def cacheEnabled = true
 
-    AutoRegisterConfig(){}
+    AutoRegisterConfig() {}
 
     void convertConfig() {
         registerInfo.each { map ->
@@ -43,6 +45,46 @@ class AutoRegisterConfig {
             }
 
         }
+
+        if (cacheEnabled) {
+            checkRegisterInfo()
+        } else {
+            deleteFile(AutoRegisterHelper.getRegisterInfoCacheFile(project))
+            deleteFile(AutoRegisterHelper.getRegisterCacheFile(project))
+        }
+    }
+
+    private void checkRegisterInfo() {
+        def registerInfo = AutoRegisterHelper.getRegisterInfoCacheFile(project)
+        def listInfo = list.toString()
+        def sameInfo = false
+
+        if (!registerInfo.exists()) {
+            registerInfo.createNewFile()
+        } else if(registerInfo.canRead()) {
+            def info = registerInfo.text
+            sameInfo = info == listInfo
+            if (!sameInfo) {
+                project.logger.error("auto-register registerInfo has been changed since project(':$project.name') last build")
+            }
+        } else {
+            project.logger.error('auto-register read registerInfo error--------')
+        }
+        if (!sameInfo) {
+            deleteFile(AutoRegisterHelper.getRegisterCacheFile(project))
+        }
+        if (registerInfo.canWrite()) {
+            registerInfo.write(listInfo)
+        } else {
+            project.logger.error('auto-register write registerInfo error--------')
+        }
+    }
+
+    private void deleteFile(File file) {
+        if (file.exists()) {
+            //registerInfo 配置有改动就删除緩存文件
+            file.delete()
+        }
     }
 
     void reset() {
@@ -53,14 +95,16 @@ class AutoRegisterConfig {
 
     @Override
     String toString() {
-        StringBuilder sb = new StringBuilder(RegisterPlugin.EXT_NAME).append(' [\n')
+        StringBuilder sb = new StringBuilder(RegisterPlugin.EXT_NAME).append(' = {')
+                .append('\n  cacheEnabled = ').append(cacheEnabled)
+                .append('\n  registerInfo = [\n')
         def size = list.size()
         for (int i = 0; i < size; i++) {
             sb.append('\t' + list.get(i).toString().replaceAll('\n', '\n\t'))
             if (i < size - 1)
                 sb.append(',\n')
         }
-        sb.append('\n]')
+        sb.append('\n  ]\n}')
         return sb.toString()
     }
 }

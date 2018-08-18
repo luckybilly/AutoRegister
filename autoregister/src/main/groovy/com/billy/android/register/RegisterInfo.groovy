@@ -27,6 +27,7 @@ class RegisterInfo {
     File fileContainsInitClass //initClassName的class文件或含有initClassName类的jar文件
     ArrayList<String> classList = new ArrayList<>()
 
+
     RegisterInfo(){}
 
     void reset() {
