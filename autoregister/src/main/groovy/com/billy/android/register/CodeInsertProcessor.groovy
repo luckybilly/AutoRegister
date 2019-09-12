@@ -156,7 +156,7 @@ class CodeInsertProcessor {
                                 , "(L${extension.interfaceName};)V"
                                 , false)
                     } else {
-                        mv.visitMethodInsn(Opcodes.INVOKESPECIAL
+                        mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL
                                 , extension.registerClassName
                                 , extension.registerMethodName
                                 , "(L${extension.interfaceName};)V"
