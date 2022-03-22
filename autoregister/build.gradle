@@ -4,15 +4,15 @@ apply plugin: 'maven'
 apply plugin: 'com.jfrog.bintray'
 
 dependencies {
-    compile gradleApi()
-    compile localGroovy()
+    implementation gradleApi()
+    implementation localGroovy()
 }
 
 repositories {
     mavenCentral()
 }
 dependencies {
-    compile 'com.android.tools.build:gradle:4.0.0'
+    implementation 'com.android.tools.build:gradle:4.0.0'
 }
 
 
