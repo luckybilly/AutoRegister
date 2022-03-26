@@ -43,31 +43,16 @@ task sourcesJar(type: Jar) {
 artifacts {
     archives sourcesJar
 }
+
 uploadArchives {
     repositories {
         mavenDeployer {
-            //deploy到maven仓库
-            if (debug_flag) {
-                repository(url: uri('../repo-local')) //deploy到本地仓库
-            } else {//deploy到maven私服中
-                def repoKey = maven_type_snapshot ? artifactory_snapshot_repoKey : artifactory_release_repoKey
-                repository(url: "${artifactory_contextUrl}/${repoKey}") {
-                    authentication(userName: artifactory_user, password: artifactory_password)
-                }
+            repository(url: 'http://nexus.pri.ibanyu.com/repository/maven-snapshots') {
+                authentication(userName: 'liuguoquan', password: 'PalFishAlvin2018')
             }
-
-            pom.groupId = artifact_group
-            pom.artifactId = artifact_id
-            pom.version = artifact_version + (maven_type_snapshot ? '-SNAPSHOT' : '')
-
-            pom.project {
-                licenses {
-                    license {
-                        name 'The Apache Software License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-            }
+            pom.groupId = 'com.palfish.android'
+            pom.artifactId = "autoregister"
+            pom.version = '1.4.7-SNAPSHOT'
         }
     }
 }
