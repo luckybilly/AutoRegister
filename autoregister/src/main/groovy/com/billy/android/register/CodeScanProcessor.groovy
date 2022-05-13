@@ -149,7 +149,7 @@ class CodeScanProcessor {
     boolean scanClass(InputStream inputStream, String filePath) {
         ClassReader cr = new ClassReader(inputStream)
         ClassWriter cw = new ClassWriter(cr, 0)
-        ScanClassVisitor cv = new ScanClassVisitor(Opcodes.ASM5, cw, filePath)
+        ScanClassVisitor cv = new ScanClassVisitor(Opcodes.ASM6, cw, filePath)
         cr.accept(cv, ClassReader.EXPAND_FRAMES)
         inputStream.close()
 

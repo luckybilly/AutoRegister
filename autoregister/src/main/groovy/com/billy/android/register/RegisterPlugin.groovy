@@ -36,5 +36,4 @@ public class RegisterPlugin implements Plugin<Project> {
         config.convertConfig()
         transformImpl.config = config
     }
-
 }
