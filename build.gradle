@@ -8,14 +8,14 @@ buildscript {
         maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
 
         google()
-        jcenter()
+//        jcenter()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.0.0'
+        classpath 'com.android.tools.build:gradle:4.2.2'
 
-        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.4.1'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
         classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.4'
-        classpath 'com.billy.android:autoregister:1.4.2'
+        classpath 'com.palfish.android:autoregister:1.5.0-SNAPSHOT'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files

@@ -1,12 +1,13 @@
 apply plugin: 'com.android.application'
+apply from: 'fixManifestrExport.gradle'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion '26.0.2'
+    compileSdkVersion 31
+    buildToolsVersion '30.0.2'
     defaultConfig {
         applicationId "com.billy.android.autoregsiter.demo"
-        minSdkVersion 14
-        targetSdkVersion 25
+        minSdkVersion 23
+        targetSdkVersion 31
         versionCode 1
         versionName "1.0"
     }
@@ -20,56 +21,59 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation 'com.android.support:appcompat-v7:25.0.0'
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
-
+    implementation('net.sourceforge.htmlunit:htmlunit:2.15') {
+        exclude group: 'xalan', module: 'xalan'
+        exclude group: 'commons-collections', module: 'commons-collections'
+        exclude group: 'org.apache.commons', module: 'commons-lang3'
+        exclude group: 'commons-codec', module: 'commons-codec'
+        exclude group: 'net.sourceforge.htmlunit', module: 'htmlunit-core-js'
+        exclude group: 'xerces', module: 'xercesImpl'
+        exclude group: 'net.sourceforge.nekohtml', module: 'nekohtml'
+        exclude group: 'net.sourceforge.cssparser', module: 'cssparser'
+        exclude group: 'commons-io', module: 'commons-io'
+        exclude group: 'commons-logging', module: 'commons-logging'
+        exclude group: 'org.eclipse.jetty', module: 'jetty-websocket'
+        exclude group: 'org.apache.httpcomponents', module: 'httpmime'
+    }
     implementation project(':app_lib')
     implementation project(':app_lib_interface')
 }
 
-
-//auto register extension
-// 功能介绍：
-//  在编译期扫描将打到apk包中的所有类
-//  将 scanInterface的实现类 或 scanSuperClasses的子类
-//  并在 codeInsertToClassName 类的 codeInsertToMethodName 方法中生成如下代码：
-//  codeInsertToClassName.registerMethodName(scanInterface)
-// 要点：
-//  1. codeInsertToMethodName 若未指定，则默认为static块
-//  2. codeInsertToMethodName 与 registerMethodName 需要同为static或非static
-// 自动生成的代码示例：
-/*
-  在com.billy.app_lib_interface.CategoryManager.class文件中
-  static
-  {
-    register(new CategoryA()); //scanInterface的实现类
-    register(new CategoryB()); //scanSuperClass的子类
-  }
- */
 apply plugin: 'auto-register'
 project.ext.registerInfoList = [
-    [
-        'scanInterface'             : 'com.billy.app_lib_interface.ICategory'
-        // scanSuperClasses 会自动被加入到exclude中，下面的exclude只作为演示，其实可以不用手动添加
-        , 'scanSuperClasses'        : ['com.billy.android.autoregister.demo.BaseCategory']
-        , 'codeInsertToClassName'   : 'com.billy.app_lib_interface.CategoryManager'
-        //未指定codeInsertToMethodName，默认插入到static块中，故此处register必须为static方法
-        , 'registerMethodName'      : 'register' //
-        , 'exclude'                 : [
-            //排除的类，支持正则表达式（包分隔符需要用/表示，不能用.）
-            'com.billy.android.autoregister.demo.BaseCategory'.replaceAll('\\.', '/') //排除这个基类
+        [
+                'scanInterface'        : 'com.billy.app_lib_interface.ICategory'
+                // scanSuperClasses 会自动被加入到exclude中，下面的exclude只作为演示，其实可以不用手动添加
+                , 'scanSuperClasses'     : ['com.billy.android.autoregister.demo.BaseCategory']
+                , 'codeInsertToClassName': 'com.billy.app_lib_interface.CategoryManager'
+                //未指定codeInsertToMethodName，默认插入到static块中，故此处register必须为static方法
+                , 'registerMethodName'   : 'register' //
+                , 'exclude'              : [
+                //排除的类，支持正则表达式（包分隔符需要用/表示，不能用.）
+                'com.billy.android.autoregister.demo.BaseCategory'.replaceAll('\\.', '/') //排除这个基类
         ]
-    ],
-    [
-        'scanInterface'             : 'com.billy.app_lib.IOther'
-        , 'codeInsertToClassName'   : 'com.billy.app_lib.OtherManager'
-        , 'codeInsertToMethodName'  : 'init' //非static方法
-        , 'registerMethodName'      : 'registerOther' //非static方法
-    ]
+        ],
+        [
+                'scanInterface'           : 'com.billy.app_lib.IOther'
+                , 'codeInsertToClassName' : 'com.billy.app_lib.OtherManager'
+                , 'codeInsertToMethodName': 'init' //非static方法
+                , 'registerMethodName'    : 'registerOther' //非static方法
+        ],
+        [
+                'codeInsertToClassName' : 'org.apache.http.conn.ssl.AllowAllHostnameVerifier'
+                , 'codeInsertToMethodName': 'verify' //非static方法
+                , 'registerMethodName'    : 'registerOther' //非static方法
+        ]
 ]
 
 autoregister {

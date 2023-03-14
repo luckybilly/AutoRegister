@@ -1,0 +1,82 @@
+/**
+ * 博客1：修改 Android 12 因为 exported 的构建问题
+ * https://stackoverflow.com/questions/36874191/editing-androidmanifest-xml-in-gradle-task-processmanifest-dolast-has-no-effect
+ * 博客2：改进向查找 processMainManifest 任务的方法
+ * https://blog.csdn.net/u011106915/article/details/123471129
+ * 博客3：针对博客2中，在manifest文件中查找节点做补充
+ * https://www.jianshu.com/p/c751a7b0ed4c
+ */
+import groovy.xml.XmlUtil
+// 项目目录中有多个app壳，在编译这个项目时会有多个任务同时读写一组文件
+// 需要对读写操作做同步处理，确保同一个文件只能有一个线程在读写
+final TAG = new Object()
+
+android.applicationVariants.all { variant ->
+    variant.outputs.each {
+        def vn
+        if (variant.getFlavorName() != null && variant.getFlavorName() != "") {
+            vn = "${variant.name.substring(0, 1).toUpperCase()}${variant.name.substring(1)}"
+        } else {
+            if (variant.getBuildType().name == "release") {
+                vn = "Release"
+            } else {
+                vn = "Debug"
+            }
+        }
+        def taskName = "process${vn}MainManifest";
+        try {
+            project.getTasks().getByName(taskName)
+        } catch (Exception ignore) {
+            return
+        }
+        project.getTasks().getByName(taskName).doFirst { task ->
+            synchronized (TAG) {
+                task.getManifests().getFiles().each { file ->
+                    println("------- manifest file = ${file.path} -------")
+                    if (file.exists() && file.canRead() && file.canWrite()) {
+                        processExportTag(file)
+                    }
+                    println("------- process end single file -------")
+                }
+            }
+        }
+    }
+}
+
+synchronized static def processExportTag(File manifestFile) {
+    if (manifestFile == null || !manifestFile.exists()) {
+        return
+    }
+
+    def xml = new XmlParser(false, false).parse(manifestFile)
+    if (xml.application == null || xml.application.size() <= 0) {
+        return
+    }
+    def exportedTag = "android:exported"
+    def nameTag = "android:name"
+    def nodes = xml.application[0].'*'.findAll {
+        //挑选要修改的节点，没有指定的 exported 的才需要增加
+        (it.name() == 'activity' || it.name() == 'receiver' || it.name() == 'service' || it.name() == 'activity-alias') && it.attribute(exportedTag) == null
+    }
+    ///添加 exported，默认 false
+    nodes.each { node ->
+        def isMain = false
+        node.each { filter ->
+            if (filter.name() == "intent-filter") {
+                filter.each { action ->
+                    if (action.name() == "action") {
+                        if (action.attributes().get(nameTag) == "android.intent.action.MAIN") {
+                            isMain = true
+                            println("......................MAIN FOUND......................")
+                        }
+                    }
+                }
+            }
+        }
+        node.attributes().put(exportedTag, "${isMain}")
+    }
+
+    PrintWriter pw = new PrintWriter(manifestFile)
+    pw.write(XmlUtil.serialize(xml))
+    pw.close()
+}
