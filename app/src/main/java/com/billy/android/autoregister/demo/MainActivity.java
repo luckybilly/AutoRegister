@@ -1,14 +1,15 @@
 package com.billy.android.autoregister.demo;
 
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
+
+import androidx.activity.ComponentActivity;
 
 import com.billy.app_lib.IOther;
 import com.billy.app_lib.OtherManager;
 import com.billy.app_lib_interface.CategoryManager;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends ComponentActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

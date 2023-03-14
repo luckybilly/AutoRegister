@@ -29,24 +29,11 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:appcompat-v7:25.0.0'
-    implementation 'com.android.support.constraint:constraint-layout:1.0.2'
-    implementation('net.sourceforge.htmlunit:htmlunit:2.15') {
-        exclude group: 'xalan', module: 'xalan'
-        exclude group: 'commons-collections', module: 'commons-collections'
-        exclude group: 'org.apache.commons', module: 'commons-lang3'
-        exclude group: 'commons-codec', module: 'commons-codec'
-        exclude group: 'net.sourceforge.htmlunit', module: 'htmlunit-core-js'
-        exclude group: 'xerces', module: 'xercesImpl'
-        exclude group: 'net.sourceforge.nekohtml', module: 'nekohtml'
-        exclude group: 'net.sourceforge.cssparser', module: 'cssparser'
-        exclude group: 'commons-io', module: 'commons-io'
-        exclude group: 'commons-logging', module: 'commons-logging'
-        exclude group: 'org.eclipse.jetty', module: 'jetty-websocket'
-        exclude group: 'org.apache.httpcomponents', module: 'httpmime'
-    }
     implementation project(':app_lib')
     implementation project(':app_lib_interface')
+
+    implementation 'androidx.activity:activity:1.5.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 }
 
 apply plugin: 'auto-register'
